@@ -1,0 +1,74 @@
+# CLAUDE.md
+
+이 파일은 Claude Code(claude.ai/code)가 이 저장소에서 작업할 때 참고하는 안내서입니다.
+
+## 이 프로젝트는
+
+주식 **단타(스캘핑) 백테스팅** 시스템입니다. 사용자는 코딩 없이 **규칙 조합**(지표 + 조건)으로 매매 로직을 구성하고, 3분봉 엑셀 데이터로 백테스트해서 지정한 투자금액 기준의 **성공/실패율 + 실패 분석 + 원화 수익금 + 자동 생성 진단**을 받습니다. LLM(Claude)도 동일한 규칙 포맷으로 전략을 추천합니다.
+
+- **백엔드**: Spring Boot 3.5.16 (Gradle, Java 25 toolchain) — `backend/`
+- **프론트엔드**: Next.js 16 (App Router, TypeScript) — `frontend/`
+- **DB**: docker-compose로 띄우는 MySQL 8, 스키마는 **Flyway** 관리
+- **엑셀 파싱**: `com.github.pjfanning:excel-streaming-reader` (SAX 방식, 14 MB / 16만 행 파일을 저메모리로 처리)
+
+전체 계획과 단계 구분은 `/Users/eunyum/.claude/plans/optimized-yawning-rain.md`에 있습니다. 완료: **(1) 엔진 + 데이터 로더 ✅ → (2) 룰 빌더 + 업로드 화면 ✅ → (3) 백테스트/결과 화면 ✅ → (4) LLM 추천 ✅ → (5) ETF 장전 선물추세 모드 ✅ → (6) 투자금액 + 원화 수익금 ✅ → (7) 백테스트 기간 지정 ✅ → (8) 규칙 기반 실패 진단 ✅ → (9) 종목별 수수료 설정 ✅ → (10) 매도 규칙 가이드 페이지 + 시간대별 익절/손절 ✅**.
+
+## 명령어
+
+백엔드 명령은 모두 `backend/`에서 실행합니다:
+
+```bash
+docker compose up -d mysql        # MySQL 기동 (저장소 루트에서). bootRun에는 필요하고 테스트에는 불필요
+./gradlew test                    # 전체 테스트 (파서+엔진만 쓰는 독립 테스트, DB 불필요)
+./gradlew test --tests BacktestEngineTest        # 테스트 클래스 하나만
+./gradlew bootRun                 # :8080에 API 기동 (MySQL 필요, Flyway가 자동 마이그레이션)
+./gradlew bootJar                 # 실행 가능한 jar 빌드
+docker compose up                 # 전체 스택 (mysql + backend + frontend)
+```
+
+프론트엔드 (`frontend/`에서):
+```bash
+npm install
+npm run dev      # :3000 개발 서버 (백엔드가 :8080에 떠 있어야 함)
+npm run build    # 프로덕션 빌드 + 타입체크
+```
+
+DB 접속 정보는 `DB_HOST/DB_PORT/DB_NAME/DB_USER/DB_PASSWORD` 환경변수로 읽습니다 (기본값은 compose MySQL 기준: `stock`/`stock` @ `localhost:3306/stock_analysis`). 프론트엔드는 `NEXT_PUBLIC_API_BASE`(기본 `http://localhost:8080`)로 백엔드를 호출하고, CORS는 `localhost:3000`을 허용합니다 (`config/WebConfig.java`).
+
+## 아키텍처
+
+### 데이터 모델 (MySQL, `backend/src/main/resources/db/migration/V1__init.sql` 참고)
+`price_bar`가 **봉 데이터의 원본(source of truth)** 입니다 — 엑셀을 파싱해 여기에 배치 insert하고, 백테스트는 여기서 조회합니다 (`WHERE dataset_id=? ORDER BY ts ASC`). **파일 캐시는 없습니다.** 원본 xlsx는 재파싱/다운로드 용도로만 `data/` 아래에 보관합니다. 테이블: `dataset`(`etf_group_id` FK 포함), `price_bar`, `strategy`(규칙은 `spec_json` JSON 컬럼), `backtest_run`, `trade`(`instrument` + `quantity`/`profit_amount`/`fee_amount` 포함), `etf_group`, `fee_setting`(id=1 단일 행 — 새로 업로드하는 종목의 기본 요율일 뿐). 종목별 수수료는 `dataset.fee_rate_pct`에 있습니다.
+
+### 백테스트 엔진 (`com.stockanalysis.backtest`) — 프레임워크 독립적인 핵심
+- **규칙 스펙**(`spec/` 패키지)은 UI와 LLM이 공유하는 JSON 트리입니다: `StrategySpec` → `entry`(`ConditionGroup`: `Condition`들의 AND/OR) + `exit`(`ExitSpec`: takeProfit/stopLoss %, maxHoldBars, closeAtDayEnd, 시그널 조건, `bands`) + `capital`(`CapitalSpec`: 원화 `amount`, `mode` FIXED/COMPOUND). `Condition`은 두 `Operand`(`{indicator}` / `{const}` / 선물 소스)를 `Operator`로 비교합니다.
+- **`BacktestEngine.run(spec, series)`**: 단일 롱 포지션, 시그널 봉의 **종가**에 진입 (미래 참조 없음). 보유 봉마다의 청산 우선순위: **STOP_LOSS → TAKE_PROFIT → SIGNAL → TIME → DAY_END → END_OF_DATA**. 익절/손절은 봉의 고가/저가로 장중 판정하고, 한 봉에서 둘 다 닿으면 **손절이 이깁니다**(보수적).
+- **시간대별 익절/손절**(`ExitSpec.bands`, `TimeBand`): 각 밴드는 KST 벽시계 기준 `[startTime, endTime)` + 선택적 takeProfit/stopLoss %입니다. `decideExit`은 진입 봉이 아니라 **보유 중인 각 봉 자신의 시각**으로 퍼센트를 매번 다시 계산합니다 — 09:20에 잡은 포지션도 10:00을 넘기면 10시 밴드의 선으로 바뀝니다(진입 시각 고정 방식 대신 사용자가 이쪽을 선택함). 먼저 맞는 밴드가 이기므로 겹침이 허용되고 좁은 구간을 앞에 두면 됩니다. % 가 null이면 `ExitSpec` 기본값으로 폴백하고, 어느 밴드에도 안 걸리는 시각은 전적으로 기본값을 씁니다. `StrategyService.validateBands`는 파싱 불가/역전된 구간과 양쪽 % 를 모두 안 채운 밴드를 거부합니다(엔진이 절대 반응할 수 없는 구간은 설정이 고장난 것으로 읽힘). 밴드는 파싱한 `LocalTime`을 캐시합니다 — 16만 봉 시리즈에서 봉마다 호출되기 때문입니다.
+- **CROSS 연산자**는 직전 봉을 참조하므로 첫 봉에서는 돌파를 판정할 수 없습니다. `NaN`이 낀 비교는 항상 false입니다 (지표 값이 없으면 `NaN`).
+- **금액 환산**(`CapitalSpec` → `BacktestEngine.applyCapital`): 진입/청산은 가격만으로 결정한 뒤, **별도 패스**에서 각 거래를 원화로 환산합니다. 그래서 포지션 사이징이 어떤 거래가 발생할지를 바꾸지 않습니다. 거래당 예산은 `FIXED` 모드에서는 `amount`, `COMPOUND` 모드에서는 현재 잔고입니다. 주식 수는 **정수로 내림**하고(한국 주식/ETF) 남는 현금은 투자되지 않습니다. **수수료는 전략이 아니라 종목에 붙습니다** — 레버리지 ETF와 인버스는 요율이 다를 수 있고 장전 모드는 둘 다 매매하므로, 실행당 하나의 요율은 틀립니다. 그래서 `CapitalSpec`에는 수수료가 없고, `BacktestService.run`이 `dataset.fee_rate_pct`로 `FeeSchedule`을 만들며(단일 모드는 `FeeSchedule.flat`, 장전 모드는 `ofEtf(leverage, inverse)`), `applyCapital`이 `fees.rateFor(trade.instrument())`를 **매수·매도 양쪽**에 부과합니다. 매도세는 요율에 녹여서 넣으면 됩니다(ETF는 없음). `MoneySummary.feeRatesPct`는 실제로 적용된 요율을 instrument(`SINGLE`, 또는 `LEVERAGE`/`INVERSE`)별로 기록합니다. 엔진의 인자 2개짜리 `run`/`runEtfPremarket` 오버로드는 수수료가 없는 버전으로, 도구와 테스트용입니다. `TradeRecord`는 `quantity`/`profitAmount`/`feeAmount`를 가지고, `BacktestResult.MoneySummary`가 이를 합산하며 `unaffordableTrades`(예산이 1주 값보다 적은 경우 — 복리 모드에서는 잔고가 깎여 내려간 경우)를 셉니다. **`success`/winRate는 수수료를 빼지 않은 가격 기준을 유지**하므로, 요율이 높으면 "이긴" 거래가 금액으로는 손실일 수 있습니다. UI가 이 점을 안내합니다.
+- **결과**(`BacktestResult`): summary(winRate, 복리 수익률, MDD, 최대 연속 손실), `money`(위의 원화 관점), `diagnosis`(아래), 거래별 기록, 자본 곡선, 그리고 **실패 분석**(손실 거래를 청산 사유별·진입 시각별로 묶은 것 + 최악의 거래들).
+- **자동 진단**(`FailureDiagnostician` → `BacktestResult.Diagnosis`): 모델 호출 없이 결정론적 규칙만 사용하므로 모든 실행이 평이한 한국어 `headline` + 최대 5개의 `Finding`(HIGH/MEDIUM/INFO, 각각 상세 + 구체적 제안)을 심각한 순으로 받습니다. 규칙: 수수료 부담(총이익이 수수료로 마이너스 전환), **손익비 대비 승률**(손익비 R이면 손익분기 승률은 1/(1+R) 초과 — 낮은 승률은 이 기준과 견줘야 의미가 있음), 지배적인 손실 청산 사유(손실의 40% 이상, 조언은 사유별로 다르고 실제 % 는 `ExitSpec`에서 읽음), 최악의 진입 시간대(손실의 35% 이상, 그리고 **시간대가 2개 이상일 때만** — 아니면 자명하게 참이라 의미 없음), 과매매(하루 5건 이상), MDD 30% 이상, 연속 손실 8회 이상, 매수 불가 거래. **장전 모드는 시간대 규칙을 건너뛰고** 임계값 위주의 조언을 받습니다 — 진입 시각이 설계상 09:00으로 고정되어 조정 가능한 조건이 아니기 때문입니다. 한국어 문장은 로/으로 조사 일치를 위해 `roParticle`을 씁니다.
+- **ETF 장전 모드**(`BacktestEngine.runEtfPremarket`, `StrategySpec.targetType=ETF` + `premarket.enabled`로 활성화): 매 거래일 `[startTime,endTime)`(기본 08:45–09:00) 구간의 선물 종가 변화율이 임계% 이상 상승이면 **레버리지**, 그만큼 하락이면 **인버스**를 고르고, 아니면 그날은 건너뜁니다. 선택된 ETF를 endTime 이후 첫 봉에 매수하고 청산 규칙으로 정리합니다. 이 모드에서 매수 조건은 무시됩니다. `TradeRecord`/`trade` 행마다 `instrument`(LEVERAGE/INVERSE, 단일 모드는 null)를 갖습니다. 단일 vs 장전 분기는 `BacktestService.run(strategyId, datasetId, groupId)`에서 이뤄집니다.
+- **ETF 그룹**(`etf_group` 테이블, `EtfGroupService`): 레버리지 1 + 인버스 1 + 선물 1 데이터셋을 묶는 이름 있는 1급 개념입니다. 데이터셋은 `dataset.etf_group_id`(FK)로 연결되며, 업로드 시 기존 그룹 중에서 고릅니다(`etfGroupId`). 그룹 생성/수정은 업로드 폼이 아니라 **전용 화면**(`app/etf-groups`)에서 합니다 — 새 ETF 쌍은 그냥 새 이름의 그룹일 뿐이라 코드나 스키마 변경이 필요 없습니다. `EtfGroupService.validateSlot`이 그룹당 **슬롯 하나에 데이터셋 하나**를 강제하고(NORMAL 데이터셋은 거부), 업로드 시에는 파일을 쓰기 전에 먼저 실행됩니다. 그룹 관리: `POST /api/etf-groups`(생성), `PATCH /api/etf-groups/{id}`(이름 변경, 중복 검사), `DELETE /api/etf-groups/{id}`(그룹만 삭제 — 멤버는 연결 해제되고 봉 데이터는 그대로), `GET /api/etf-groups`(슬롯별 채움 상태 + `ready` 플래그). `PATCH /api/datasets/{id}/group {etfGroupId}`는 데이터셋을 그룹 간에 옮깁니다(null이면 연결 해제) — 재업로드 없이 슬롯을 다시 채울 수 있습니다. 지금 속한 그룹으로 다시 지정하는 것은 자기 충돌이 아니라 무동작으로 처리합니다. **이미 찬 슬롯을 교체하려면 두 번 호출**해야 합니다(기존 것 연결 해제 후 지정) — 아니면 `validateSlot`이 중복으로 거부하기 때문이며, 그룹 화면은 `setSlot`에서 이렇게 처리합니다. 장전 백테스트는 숫자 `groupId`를 받고, `EtfGroupService.resolve`가 세 시리즈를 로드합니다.
+
+### 웹 계층
+`/api` 아래 REST API (`web/` 패키지): `strategies`(CRUD), `datasets`(멀티파트 업로드 → 파싱 → `price_bar`, 목록, 삭제, PATCH `/{id}/group`), `etf-groups`(생성/목록/이름변경/삭제), `settings/fee`(신규 종목 기본 요율 GET/PUT, 0–5%), `datasets/{id}/fee`(종목 요율 PATCH), `meta`(드롭다운용 enum 목록), `backtests`(POST 실행 — 선택적이며 양끝 포함인 `fromDate`/`toDate`, GET 이력 — **저장된 모든 실행, 개수 제한 없음**, GET `/{id}` 상세). `DatasetService`가 시장에 따라 업로드를 알맞은 `data/` 하위 폴더로 보냅니다. 오류는 `ApiExceptionHandler`를 통해 `{"error": "..."}`로 나가고 `IllegalArgumentException`은 400입니다.
+
+`app/guide`는 매도 규칙 전용 한국어 도움말 정적 페이지입니다(만드는 순서, 청산 우선순위 표, 시간대 밴드, OR/AND, 지표·연산자 표, 예시 레시피, 헷갈리는 점) — **엔진을 보고 손으로 쓴 문서**이므로 `decideExit`/`ExitSpec`을 바꾸면 이 페이지도 함께 고쳐야 합니다.
+
+프론트엔드 페이지: `app/strategies`(RuleBuilder 편집기 + 목록), `app/datasets`(업로드 + 목록, 그룹은 기존 그룹의 `<select>`), `app/etf-groups`(전용 그룹 화면: 생성, 인라인 이름 변경, 삭제, 슬롯별 후보 데이터셋 `<select>` — 이미 다른 그룹에 속한 데이터셋은 `(현재: …)` 라벨과 함께 제시되고 이동이 허용됨), `app/fees`(종목별 수수료: 데이터셋마다 요율을 blur 시 커밋, 왕복 비용 미리보기, 신규 업로드 기본값과 일괄 적용), `app/backtest`(실행 + 결과: 선택 대상의 전체 기간으로 초기화되는 날짜 선택기 — ETF 그룹이면 세 데이터셋의 **교집합** — 과 전체/최근 1·3·6개월/1년 프리셋, 사용자가 날짜를 직접 고치면 프리셋이 더 이상 덮어쓰지 않음. 통계 카드, 원화 **수익 금액** 카드, **자동 진단** 카드(심각도별 색), 인라인 SVG **누적 수익금 곡선**(각 거래의 `profitAmount`를 프론트에서 누적해 그리고, 시각/누적 수익금/투자금 대비 % 호버 툴팁, 손절 계단이 실제로 없던 저점까지 튀지 않도록 monotone cubic 보간 사용. `money`가 없는 V4 이전 실행은 저장된 자본배수 곡선으로 폴백), 청산 사유별/시간대별 실패, 수량·손익금액이 있는 페이지네이션 거래 내역(**최신 거래부터** 표시하되 `#` 번호는 시간순 유지), 수익금 컬럼이 있는 이력).
+
+### 백테스트 실행 저장 (`run/` 패키지)
+`BacktestService.run(strategyId, datasetId, groupId, from, to)`가 전략 스펙과 `DatasetLoader.load(datasetId, from, to)`를 불러 `BacktestEngine`을 돌리고, `BacktestRun`(결과 요약은 `summary_json`, 요청 기간은 `params` 컬럼에 `RunParams`로)과 모든 거래를 `TradeJdbc` 배치 insert로 저장합니다. **기간 지정**: 양끝 모두 선택 사항이며(null이면 데이터셋 전체 구간) `to`는 **그날 하루 전체를 포함**합니다 — SQL 조건이 `ts < to + 1 day`입니다. 필터링은 SQL에서 하므로 한 달치 실행이 15만 행을 읽지 않습니다. 경계값은 아래의 벽시계 규칙에 따라 `LocalDateTime`으로 바인딩합니다. 장전 모드는 세 시리즈 모두 같은 기간으로 거릅니다. `RunParams`는 요청한 경계 **그리고** 실제로 해석된 값(`barFromTs`/`barToTs`/`barCount`)을 함께 기록하며, UI가 보여주는 것은 후자입니다. `from > to`와 빈 구간은 기간을 담은 메시지와 함께 400입니다. **저장 JSON은 의도적으로 시간 타입을 쓰지 않습니다**(`StoredResult`는 ISO 문자열 타임스탬프 + 문자열 맵 키 사용) — Hibernate의 Jackson JSON 매퍼에 Java time 모듈이 없어 `LocalDateTime`에서 실패하기 때문입니다. 이력 상세는 `summary_json` + `trade` 테이블로 재구성하므로, 이력 화면은 저장된 것을 그대로 보는 뷰입니다. 메모리에 들고 있는 것이 없고 목록도 잘리지 않습니다. **`run`은 불러온 `Strategy`를 즉시 detach합니다**(`entityManager.detach`): 쓰기 트랜잭션이라 관리 상태의 `Strategy`는 `spec_json` 재직렬화로 더티 체킹되는데, 기본값이 있는 스펙 필드(`capital`, `premarket`, …)는 예전 행에 아예 없어서 Hibernate가 조용한 UPDATE를 날려 사용자의 스펙을 덮어쓰고 실행할 때마다 `updated_at`을 올려버립니다. **기본값이 있는 스펙 필드를 새로 추가하면 이 함정이 다시 살아납니다** — 쓰기 트랜잭션에서 전략을 불러오는 모든 곳을 확인하세요. V4 이전에 기록된 실행은 `summary_json`에 `money`가 없고 금액 컬럼이 NULL이라(raw JDBC가 0으로 읽어옵니다), UI는 금액 카드와 거래별 금액 컬럼을 거래 행이 아니라 `money != null` 기준으로 노출합니다.
+
+### LLM 추천 (`recommend/` 패키지)
+`RecommendationService.recommend(datasetId)`는 사용자가 직접 만드는 것과 동일한 JSON 포맷의 `StrategySpec`을 생성합니다. `ClaudeCliRecommendationService` 구현체는 **로컬 Claude Code CLI를 헤드리스로** 호출합니다(`ProcessBuilder`로 `claude -p <prompt> --output-format json`) — Anthropic API 키가 필요 없고 개발자의 기존 Claude Code 인증을 씁니다. `DatasetStats`가 프롬프트에 넣을 종목별 통계 요약을 만들고, 응답에서 JSON 배열을 추출해(코드펜스/설명문이 섞여도 견딤) 검증합니다. `POST /api/recommendations {datasetId}`가 각 결과를 `source=LLM` 전략으로 저장합니다. **이 기능은 `claude`가 설치·인증된 환경에서 백엔드가 돌 때만 동작합니다(로컬 개발 환경, Docker 이미지 아님)**. 바이너리 경로는 `CLAUDE_BIN`으로 설정합니다. 나중에 실제 Anthropic API로 바꾸려면 `RecommendationService` 구현체를 하나 더 추가하면 되고, 나머지는 그대로입니다.
+
+### 핵심 규약
+- **원본 엑셀의 봉은 최신순**입니다. `BarSeries`는 생성 시 항상 오름차순으로 정렬합니다.
+- 지표는 엑셀 **열 위치**로 바인딩합니다(헤더에 맨숫자가 중복 사용됨): `0 날짜, 1 시각, 2 시가, 3 고가, 4 저가, 5 종가, 6 MA5, 7 MA10, 8 MA20, 9 MA60, 10 거래량, 11 volMA5, 12 volMA20, 13 volMA60, 14 volMA120`.
+- 데이터 배치: `data/futures/`(선물), `data/stock/etf/`(레버리지/인버스 쌍), `data/stock/normal/`(단일 종목).
+- **날짜·시각 바인딩 함정**: 모든 DATETIME 컬럼은 순간(instant)이 아니라 **KST 벽시계**를 담습니다. raw JDBC에서는 `LocalDateTime`을 **직접** 바인딩하고(`ps.setObject` / `rs.getObject(.., LocalDateTime.class)`) 절대 `java.sql.Timestamp`를 거치지 마세요 — `PriceBarWriter`/`DatasetLoader` 참고. JPA 엔티티는 그렇게 할 수 없으므로(Hibernate가 `LocalDateTime`을 항상 `Timestamp`로 보냄) JDBC url에 **`preserveInstants=false`** 를 넣어 드라이버의 타임존 변환을 막았습니다. 이게 없으면 JPA 컬럼(`dataset.from_ts/to_ts/uploaded_at`, `backtest_run.created_at`, `strategy.created_at/updated_at`)이 raw JDBC 컬럼(`price_bar.ts`, `trade.*_ts`)보다 9시간 뒤처집니다 — 읽기 시프트가 쓰기 시프트를 상쇄해 API로는 안 보이지만, DB 안에서는 틀린 값이고 두 그룹을 조인하는 SQL에서도 틀립니다.
+
+## 데이터
+시드 데이터셋 3개 (3분봉 OHLCV + 이동평균, 각각 약 14만~16만 행): KOSPI200 선물, KODEX 레버리지, KODEX200 선물인버스. 빠르게 확인하려면 `read_only=True`로 `python3 -c "import openpyxl; ..."` 를 쓰세요.

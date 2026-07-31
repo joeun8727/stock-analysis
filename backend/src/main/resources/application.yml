@@ -1,0 +1,37 @@
+spring:
+  application:
+    name: stock-analysis
+  datasource:
+    # preserveInstants=false keeps DATETIME columns as wall-clock: Hibernate binds LocalDateTime
+    # through java.sql.Timestamp, and without this the driver shifts it by the JVM/server tz offset
+    # (KST -> UTC), so JPA columns would disagree with the raw-JDBC ones (price_bar.ts, trade.*_ts).
+    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:stock_analysis}?rewriteBatchedStatements=true&connectionTimeZone=UTC&preserveInstants=false&characterEncoding=UTF-8
+    username: ${DB_USER:stock}
+    password: ${DB_PASSWORD:stock}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        jdbc:
+          batch_size: 1000
+        order_inserts: true
+        order_updates: true
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+  servlet:
+    multipart:
+      max-file-size: 200MB
+      max-request-size: 200MB
+
+app:
+  data-dir: ${APP_DATA_DIR:../data}
+  # LLM recommendation runs the local Claude Code CLI headlessly (no API key).
+  claude-bin: ${CLAUDE_BIN:claude}
+  recommend-timeout-seconds: ${RECOMMEND_TIMEOUT:150}
+
+server:
+  port: 8080

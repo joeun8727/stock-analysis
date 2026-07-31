@@ -1,0 +1,28 @@
+# Java / Gradle
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+
+# Node / Next.js
+node_modules/
+.next/
+out/
+*.tsbuildinfo
+
+# IDE
+.idea/
+*.iml
+
+# OS
+.DS_Store
+
+# Env
+.env
+.env.local
+
+# Original uploaded excel data is large (~14 MB each); keep the folder structure but not the files.
+# price_bar is the source of truth anyway — re-upload the xlsx through the 데이터 업로드 screen.
+data/**/*.xlsx
+!data/**/.gitkeep
+
+.gstack/
