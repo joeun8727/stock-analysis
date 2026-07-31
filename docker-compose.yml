@@ -1,19 +1,21 @@
+# 설정값은 저장소 루트의 .env에서 읽습니다 (compose가 자동으로 읽습니다).
+# .env가 없으면 변수가 빈 문자열이 되어 MySQL이 뜨지 않습니다 — cp .env.example .env 로 만드세요.
 services:
   mysql:
     image: mysql:8.0
     container_name: stock_mysql
     environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: stock_analysis
-      MYSQL_USER: stock
-      MYSQL_PASSWORD: stock
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?set it in .env}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:?set it in .env}
+      MYSQL_USER: ${MYSQL_USER:?set it in .env}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?set it in .env}
     command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
     ports:
       - "3306:3306"
     volumes:
       - mysql_data:/var/lib/mysql
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p${MYSQL_ROOT_PASSWORD}"]
       interval: 5s
       timeout: 5s
       retries: 20
@@ -25,11 +27,11 @@ services:
       mysql:
         condition: service_healthy
     environment:
-      DB_HOST: mysql
-      DB_PORT: 3306
-      DB_NAME: stock_analysis
-      DB_USER: stock
-      DB_PASSWORD: stock
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT}
+      DB_NAME: ${MYSQL_DATABASE}
+      DB_USER: ${MYSQL_USER}
+      DB_PASSWORD: ${MYSQL_PASSWORD}
       APP_DATA_DIR: /app/data
     ports:
       - "8080:8080"
@@ -42,7 +44,7 @@ services:
     depends_on:
       - backend
     environment:
-      NEXT_PUBLIC_API_BASE: http://localhost:8080
+      NEXT_PUBLIC_API_BASE: ${NEXT_PUBLIC_API_BASE}
     ports:
       - "3000:3000"
 

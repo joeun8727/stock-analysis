@@ -33,7 +33,9 @@ npm run dev      # :3000 개발 서버 (백엔드가 :8080에 떠 있어야 함)
 npm run build    # 프로덕션 빌드 + 타입체크
 ```
 
-DB 접속 정보는 `DB_HOST/DB_PORT/DB_NAME/DB_USER/DB_PASSWORD` 환경변수로 읽습니다 (기본값은 compose MySQL 기준: `stock`/`stock` @ `localhost:3306/stock_analysis`). 프론트엔드는 `NEXT_PUBLIC_API_BASE`(기본 `http://localhost:8080`)로 백엔드를 호출하고, CORS는 `localhost:3000`을 허용합니다 (`config/WebConfig.java`).
+**compose 설정값은 저장소 루트의 `.env`에 있습니다**(git 제외). 새로 받은 환경에서는 `cp .env.example .env` 후 값을 채우세요 — 없으면 compose가 `required variable ... is missing a value`로 즉시 실패합니다(빈 비밀번호로 조용히 뜨지 않도록 `${VAR:?}` 를 씁니다). `docker-compose.yml`에 자격증명을 다시 적어 넣지 마세요. 백엔드의 `DB_NAME/DB_USER/DB_PASSWORD`는 compose에서 `MYSQL_*` 값을 그대로 넘겨받으므로 비밀번호는 `.env`에 **한 번만** 씁니다.
+
+DB 접속 정보는 `DB_HOST/DB_PORT/DB_NAME/DB_USER/DB_PASSWORD` 환경변수로 읽습니다 (`bootRun`처럼 compose 밖에서 띄울 때의 기본값은 `stock`/`stock` @ `localhost:3306/stock_analysis`). 프론트엔드는 `NEXT_PUBLIC_API_BASE`(기본 `http://localhost:8080`)로 백엔드를 호출하고, CORS는 `localhost:3000`을 허용합니다 (`config/WebConfig.java`).
 
 ## 아키텍처
 
