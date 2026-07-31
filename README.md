@@ -77,7 +77,12 @@ docker compose down      # 종료 (DB 데이터는 볼륨에 남습니다)
 
 **LLM 전략 추천은 별도 환경이 필요합니다.** 로컬에 설치·인증된 [Claude Code](https://claude.com/claude-code) CLI를 호출하는 방식이라, **Docker로 띄운 백엔드에서는 동작하지 않습니다.** 쓰려면 백엔드를 로컬에서 직접 실행하세요(아래 참고). 바이너리 경로는 `CLAUDE_BIN`으로 지정합니다.
 
-**원격 서버에 올릴 때는 코드 수정이 필요합니다.** `NEXT_PUBLIC_API_BASE`는 Next.js가 **빌드 시점에 값을 박아 넣습니다.** 지금 `frontend/Dockerfile`은 이 값을 빌드 인자로 받지 않아서, `.env`에서 바꿔도 컨테이너에는 기본값 `http://localhost:8080`이 들어갑니다. localhost에서 쓸 때는 문제없지만, 다른 호스트에서 접속하게 하려면 Dockerfile에 `ARG`/`ENV`를 추가해야 합니다.
+**다른 PC나 원격 서버에서 접속하게 하려면 `--build`가 필요합니다.** `NEXT_PUBLIC_API_BASE`는 Next.js가 **빌드 시점에 클라이언트 번들에 박아 넣습니다.** 그래서 `.env`만 고치고 재시작하면 이전 값이 그대로 남습니다. 주소를 바꿨다면 반드시 프론트를 다시 빌드하세요.
+
+```bash
+# .env 에서 NEXT_PUBLIC_API_BASE=http://192.168.0.10:8080 로 수정한 뒤
+docker compose up -d --build frontend
+```
 
 ---
 

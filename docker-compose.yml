@@ -39,11 +39,17 @@ services:
       - ./data:/app/data
 
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+      # Must be a build arg, not just a runtime env: Next.js bakes NEXT_PUBLIC_* into the
+      # client bundle during `npm run build`. Changing it needs `docker compose up --build`.
+      args:
+        NEXT_PUBLIC_API_BASE: ${NEXT_PUBLIC_API_BASE}
     container_name: stock_frontend
     depends_on:
       - backend
     environment:
+      # Kept for server-side rendering; the browser uses the value baked in above.
       NEXT_PUBLIC_API_BASE: ${NEXT_PUBLIC_API_BASE}
     ports:
       - "3000:3000"
