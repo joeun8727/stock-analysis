@@ -4,7 +4,8 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 /**
- * A single 3-minute candle with precomputed moving averages.
+ * A single intraday candle (3-minute or 1-minute, depending on the dataset) with precomputed
+ * moving averages.
  * Missing values are represented as {@link Double#NaN} so comparisons involving them are false.
  */
 public record Bar(

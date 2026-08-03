@@ -6,19 +6,19 @@ import Link from "next/link";
  */
 
 const INDICATORS: { key: string; name: string; note: string }[] = [
-  { key: "OPEN", name: "시가", note: "그 3분봉이 시작될 때 가격" },
-  { key: "HIGH", name: "고가", note: "그 3분봉 안에서 가장 높았던 가격" },
-  { key: "LOW", name: "저가", note: "그 3분봉 안에서 가장 낮았던 가격" },
-  { key: "CLOSE", name: "종가", note: "그 3분봉이 끝날 때 가격 — 가장 많이 쓰는 기준" },
-  { key: "MA5", name: "5봉 이동평균", note: "최근 15분 평균가 (아주 짧은 흐름)" },
-  { key: "MA10", name: "10봉 이동평균", note: "최근 30분 평균가" },
-  { key: "MA20", name: "20봉 이동평균", note: "최근 1시간 평균가 (단타의 기준선)" },
-  { key: "MA60", name: "60봉 이동평균", note: "최근 3시간 평균가 (그날의 큰 방향)" },
-  { key: "VOLUME", name: "거래량", note: "그 3분봉에 체결된 수량" },
-  { key: "VOL_MA5", name: "거래량 5봉 평균", note: "최근 15분 평균 거래량" },
-  { key: "VOL_MA20", name: "거래량 20봉 평균", note: "최근 1시간 평균 거래량" },
-  { key: "VOL_MA60", name: "거래량 60봉 평균", note: "최근 3시간 평균 거래량" },
-  { key: "VOL_MA120", name: "거래량 120봉 평균", note: "최근 6시간 평균 거래량 (사실상 하루치)" },
+  { key: "OPEN", name: "시가", note: "그 봉이 시작될 때 가격" },
+  { key: "HIGH", name: "고가", note: "그 봉 안에서 가장 높았던 가격" },
+  { key: "LOW", name: "저가", note: "그 봉 안에서 가장 낮았던 가격" },
+  { key: "CLOSE", name: "종가", note: "그 봉이 끝날 때 가격 — 가장 많이 쓰는 기준" },
+  { key: "MA5", name: "5분 이동평균", note: "최근 5분 평균가 (아주 짧은 흐름)" },
+  { key: "MA10", name: "10분 이동평균", note: "최근 10분 평균가" },
+  { key: "MA20", name: "20분 이동평균", note: "최근 20분 평균가 (단타의 기준선)" },
+  { key: "MA60", name: "60분 이동평균", note: "최근 1시간 평균가 (그날의 큰 방향)" },
+  { key: "VOLUME", name: "거래량", note: "그 봉에 체결된 수량" },
+  { key: "VOL_MA5", name: "거래량 5분 평균", note: "최근 5분 평균 거래량" },
+  { key: "VOL_MA20", name: "거래량 20분 평균", note: "최근 20분 평균 거래량" },
+  { key: "VOL_MA60", name: "거래량 60분 평균", note: "최근 1시간 평균 거래량" },
+  { key: "VOL_MA120", name: "거래량 120분 평균", note: "최근 2시간 평균 거래량" },
 ];
 
 const OPERATORS: { key: string; label: string; means: string }[] = [
@@ -43,12 +43,12 @@ const RECIPES: { title: string; rule: string; why: string }[] = [
   {
     title: "짧은 흐름이 꺾이면 판다",
     rule: "CLOSE  하향돌파  MA5",
-    why: "15분 평균선을 종가가 뚫고 내려간 그 봉에 청산. 가장 무난한 시그널 청산이고, 익절선까지 못 갔는데 힘이 빠진 자리를 잡아냅니다.",
+    why: "5분 평균선을 종가가 뚫고 내려간 그 봉에 청산. 가장 무난한 시그널 청산이고, 익절선까지 못 갔는데 힘이 빠진 자리를 잡아냅니다.",
   },
   {
     title: "데드크로스가 나면 판다",
     rule: "MA5  하향돌파  MA20",
-    why: "단기선이 1시간선을 아래로 뚫는 자리. 위보다 늦게 나오지만 그만큼 덜 흔들립니다(잔파동에 덜 속음).",
+    why: "단기선이 20분선을 아래로 뚫는 자리. 위보다 늦게 나오지만 그만큼 덜 흔들립니다(잔파동에 덜 속음).",
   },
   {
     title: "기준선 아래면 그냥 판다",
@@ -58,7 +58,7 @@ const RECIPES: { title: string; rule: string; why: string }[] = [
   {
     title: "거래량이 터지면 판다",
     rule: "VOLUME  >  VOL_MA20",
-    why: "평소(1시간 평균)보다 거래량이 많아진 봉에서 청산. 급등 끝물에 물량이 쏟아지는 자리를 피하려는 용도입니다.",
+    why: "평소(20분 평균)보다 거래량이 많아진 봉에서 청산. 급등 끝물에 물량이 쏟아지는 자리를 피하려는 용도입니다.",
   },
   {
     title: "특정 가격에 닿으면 판다",
@@ -78,7 +78,7 @@ export default function GuidePage() {
       <div className="card">
         <h2>한 줄 요약</h2>
         <p className="diag-headline" style={{ marginBottom: 0 }}>
-          매수한 <b>다음 봉부터</b>, 3분봉이 하나 끝날 때마다 <b>손절 → 익절 → 매도 시그널 → 최대 보유 → 당일 청산</b> 순서로 검사해서
+          매수한 <b>다음 봉부터</b>, 봉이 하나 끝날 때마다 <b>손절 → 익절 → 매도 시그널 → 최대 보유 → 당일 청산</b> 순서로 검사해서
           <b> 가장 먼저 걸리는 하나</b>로 팝니다. &lsquo;매도 시그널 조건&rsquo;은 그중 세 번째 칸일 뿐입니다.
         </p>
       </div>
@@ -110,7 +110,8 @@ export default function GuidePage() {
             → <a href="#time-bands">아래 설명</a>
           </li>
           <li>
-            <b>그 외 청산</b>의 <b>최대 보유 봉수</b>(1봉 = 3분)와 <b>당일 청산</b>을 정합니다. 단타라면 당일 청산은 켜두는 걸 권합니다.
+            <b>그 외 청산</b>의 <b>최대 보유 봉수</b>(1봉 = 그 데이터셋의 봉 길이 — 3분봉이면 3분, 1분봉이면 1분)와
+            <b> 당일 청산</b>을 정합니다. 단타라면 당일 청산은 켜두는 걸 권합니다.
           </li>
           <li>
             더 세밀하게 팔고 싶을 때만 <b>매도 시그널 조건 (선택)</b>에 조건을 넣습니다. 오른쪽 드롭다운에서
@@ -190,7 +191,7 @@ export default function GuidePage() {
             <tr>
               <td>4</td>
               <td><b>최대 보유 봉수</b></td>
-              <td>산 뒤 N봉이 지나면 (3분 × N)</td>
+              <td>산 뒤 N봉이 지나면 (봉 길이 × N)</td>
               <td>그 봉의 종가</td>
               <td><span className="reason-tag">시간청산</span></td>
             </tr>
@@ -214,7 +215,7 @@ export default function GuidePage() {
           1·2번(익절·손절)의 %는 같은 표에서 <b>시간대별로 다르게</b> 줄 수 있습니다. <a href="#time-bands">시간대별 익절 / 손절</a>을 보세요.
         </p>
         <p className="hint">
-          한 봉 안에서 손절선과 익절선에 <b>둘 다</b> 닿았다면 <b>손절로 처리</b>합니다. 3분봉 데이터만으로는 어느 쪽이 먼저였는지 알 수 없어서,
+          한 봉 안에서 손절선과 익절선에 <b>둘 다</b> 닿았다면 <b>손절로 처리</b>합니다. 봉 데이터만으로는 어느 쪽이 먼저였는지 알 수 없어서,
           결과를 좋게 보이게 하지 않는 쪽(보수적)으로 계산합니다.
         </p>
       </div>
@@ -282,7 +283,7 @@ export default function GuidePage() {
           <span className="guide-slot">CLOSE</span>
           <span className="guide-op">하향돌파</span>
           <span className="guide-slot">MA5</span>
-          <span className="guide-read">→ &ldquo;종가가 5봉 이동평균을 뚫고 내려가면&rdquo;</span>
+          <span className="guide-read">→ &ldquo;종가가 5분 이동평균을 뚫고 내려가면&rdquo;</span>
         </div>
         <ul className="guide-list">
           <li><b>왼쪽</b>은 항상 지표(가격·이동평균·거래량)입니다.</li>
@@ -310,7 +311,7 @@ export default function GuidePage() {
           </div>
         </div>
         <p className="hint">
-          AND에 <b>돌파(상향/하향돌파)를 두 개 이상</b> 넣으면 두 돌파가 같은 3분봉에 동시에 일어나야 해서 사실상 거의 안 걸립니다.
+          AND에 <b>돌파(상향/하향돌파)를 두 개 이상</b> 넣으면 두 돌파가 같은 봉에 동시에 일어나야 해서 사실상 거의 안 걸립니다.
           AND를 쓸 땐 돌파 1개 + 상태 조건(&lt;, &gt;)으로 섞는 편이 낫습니다.
         </p>
       </div>
@@ -329,7 +330,8 @@ export default function GuidePage() {
       <div className="card">
         <h2>지표 이름 읽는 법</h2>
         <p className="hint" style={{ marginTop: 0 }}>
-          데이터가 3분봉이라 &lsquo;봉&rsquo; 하나가 3분입니다. 그래서 MA20은 20봉 = 최근 1시간 평균입니다.
+          이동평균 뒤의 숫자는 <b>봉 개수가 아니라 분</b>입니다 — MA20은 최근 <b>20분</b> 평균이고, 3분봉이든 1분봉이든 같은 값을 뜻합니다.
+          봉 길이에 따라 달라지는 건 <b>최대 보유 봉수</b>뿐입니다(1봉 = 3분 또는 1분).
         </p>
         <table>
           <thead>
@@ -373,7 +375,7 @@ export default function GuidePage() {
         <h2>자주 헷갈리는 것</h2>
         <div className="finding sev-HIGH">
           <div className="f-title"><span className="badge sev-HIGH">심각</span>산 봉에서는 팔지 않습니다</div>
-          <p className="f-detail">매수는 조건이 맞은 봉의 종가에 이루어지고, 매도 검사는 <b>그다음 봉부터</b> 시작합니다. 최소 3분은 보유합니다.</p>
+          <p className="f-detail">매수는 조건이 맞은 봉의 종가에 이루어지고, 매도 검사는 <b>그다음 봉부터</b> 시작합니다. 최소 한 봉(3분봉이면 3분, 1분봉이면 1분)은 보유합니다.</p>
         </div>
         <div className="finding sev-HIGH">
           <div className="f-title"><span className="badge sev-HIGH">심각</span>손절·익절이 시그널보다 먼저입니다</div>

@@ -241,7 +241,7 @@ export default function BacktestPage() {
               <select value={datasetId} onChange={(e) => setDatasetId(e.target.value ? Number(e.target.value) : "")} style={{ width: "100%" }}>
                 {datasets.length === 0 && <option value="">데이터 없음 (데이터 업로드에서 먼저 등록)</option>}
                 {datasets.map((d) => (
-                  <option key={d.id} value={d.id}>{d.symbol} ({d.kind}, {d.barCount.toLocaleString()}봉)</option>
+                  <option key={d.id} value={d.id}>{d.symbol} ({d.kind}, {d.barIntervalMinutes}분봉 {d.barCount.toLocaleString()}개)</option>
                 ))}
               </select>
             </div>

@@ -68,7 +68,10 @@ public class ClaudeCliRecommendationService implements RecommendationService {
     private String buildPrompt(DatasetStats.Stats s) {
         return """
                 당신은 한국 주식 단타(스캘핑) 전략 설계자입니다.
-                아래 종목의 3분봉 통계를 참고하여, 백테스트 가능한 매매 전략 3~5개를 설계하세요.
+                아래 종목의 %d분봉 통계를 참고하여, 백테스트 가능한 매매 전략 3~5개를 설계하세요.
+                이 데이터는 1봉이 %d분입니다 — maxHoldBars는 봉 개수이므로 10을 넣으면 %d분 보유입니다.
+                (지표의 MA5/MA10/MA20/MA60과 VOL_MA5/20/60/120은 봉 개수가 아니라 분 단위 이동평균이라
+                 봉 길이와 무관하게 항상 5분/10분/20분/60분, 5분/20분/60분/120분 평균입니다.)
 
                 [종목 통계]
                 - 종목: %s (%s / %s)
@@ -111,6 +114,7 @@ public class ClaudeCliRecommendationService implements RecommendationService {
                 - 시간대별 폭이 필요한 전략(장 초반 변동성 활용 등)에만 bands를 쓰고, 나머지는 빈 배열로 둘 것.
                 - 반드시 JSON 배열만 출력. 설명, 마크다운, 코드펜스 없이 대괄호 배열 [ ... ] 만 출력.
                 """.formatted(
+                s.barIntervalMinutes(), s.barIntervalMinutes(), s.barIntervalMinutes() * 10,
                 s.symbol(), s.market(), s.kind(),
                 s.barCount(), s.tradingDays(), s.fromTs(), s.toTs(),
                 s.minClose(), s.maxClose(), s.avgClose(),

@@ -529,7 +529,9 @@ export default function RuleBuilder({
         <div>
           <label>최대 보유 봉수 (비우면 없음)</label>
           <input type="number" value={exit.maxHoldBars ?? ""} onChange={(e) => setExit({ ...exit, maxHoldBars: numOrNull(e.target.value) })} style={{ width: "100%" }} />
-          <p className="hint" style={{ marginBottom: 0 }}>1봉 = 3분. 10을 넣으면 30분 뒤 청산합니다.</p>
+          <p className="hint" style={{ marginBottom: 0 }}>
+            1봉은 백테스트에 고르는 데이터셋의 봉 길이입니다 — 10을 넣으면 3분봉에서는 30분, 1분봉에서는 10분 뒤 청산.
+          </p>
         </div>
         <div>
           <label>당일 청산</label>

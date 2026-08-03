@@ -45,6 +45,14 @@ public class Dataset {
     @Column(name = "bar_count", nullable = false)
     private int barCount;
 
+    /**
+     * Bar length of this file in minutes, inferred from the parsed timestamps at upload. The engine
+     * ignores it (it counts bars), but "10봉 보유" means 30 minutes at 3 and 10 at 1, so the UI and
+     * the LLM prompt need it to describe the same spec correctly for either dataset.
+     */
+    @Column(name = "bar_interval_minutes", nullable = false)
+    private int barIntervalMinutes = 3;
+
     @Column(name = "from_ts")
     private LocalDateTime fromTs;
 
@@ -119,6 +127,14 @@ public class Dataset {
 
     public void setBarCount(int barCount) {
         this.barCount = barCount;
+    }
+
+    public int getBarIntervalMinutes() {
+        return barIntervalMinutes;
+    }
+
+    public void setBarIntervalMinutes(int barIntervalMinutes) {
+        this.barIntervalMinutes = barIntervalMinutes;
     }
 
     public LocalDateTime getFromTs() {

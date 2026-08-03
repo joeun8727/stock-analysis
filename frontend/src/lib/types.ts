@@ -97,6 +97,8 @@ export type Dataset = {
   feeRatePct: number;
   originalFilename: string;
   barCount: number;
+  /** Bar length of this file in minutes (3 for 3-minute data, 1 for 1-minute), inferred at upload. */
+  barIntervalMinutes: number;
   fromTs: string | null;
   toTs: string | null;
   uploadedAt: string;

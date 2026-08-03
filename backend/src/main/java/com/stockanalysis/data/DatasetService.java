@@ -92,6 +92,8 @@ public class DatasetService {
         ds.setFeeRatePct(feeSettings.currentRatePct());
         ds.setOriginalFilename(filename);
         ds.setBarCount(series.size());
+        // Measured from the file itself: the same symbol can also be uploaded as 1-minute bars.
+        ds.setBarIntervalMinutes(series.inferIntervalMinutes());
         ds.setFromTs(series.bars().get(0).ts());
         ds.setToTs(series.bars().get(series.size() - 1).ts());
         Dataset saved = repo.save(ds);

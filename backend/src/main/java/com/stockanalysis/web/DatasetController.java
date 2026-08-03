@@ -38,12 +38,13 @@ public class DatasetController {
 
     public record DatasetDto(Long id, String symbol, Market market, Kind kind,
                              Long etfGroupId, String groupName, double feeRatePct,
-                             String originalFilename, int barCount,
+                             String originalFilename, int barCount, int barIntervalMinutes,
                              LocalDateTime fromTs, LocalDateTime toTs, LocalDateTime uploadedAt) {
         static DatasetDto from(Dataset d, String groupName) {
             return new DatasetDto(d.getId(), d.getSymbol(), d.getMarket(), d.getKind(),
                     d.getEtfGroupId(), groupName, d.getFeeRatePct(),
-                    d.getOriginalFilename(), d.getBarCount(), d.getFromTs(), d.getToTs(), d.getUploadedAt());
+                    d.getOriginalFilename(), d.getBarCount(), d.getBarIntervalMinutes(),
+                    d.getFromTs(), d.getToTs(), d.getUploadedAt());
         }
     }
 

@@ -20,6 +20,19 @@ function eligible(datasets: Dataset[], slot: SlotKey): Dataset[] {
   return datasets.filter((d) => d.market === "ETF" && d.kind === kind);
 }
 
+/**
+ * Bar lengths present in a group's filled slots. Mixing them is a real error: the pre-market
+ * decision and any futures-referencing condition match the futures bar by exact timestamp, so a
+ * 1-minute ETF against 3-minute futures silently finds nothing on two of every three bars.
+ */
+function slotIntervals(group: EtfGroup, datasets: Dataset[]): number[] {
+  return SLOTS
+    .map((s) => group[s.key] as EtfSlot)
+    .filter((slot): slot is NonNullable<EtfSlot> => slot !== null)
+    .map((slot) => datasets.find((d) => d.id === slot.datasetId)?.barIntervalMinutes)
+    .filter((v): v is number => v !== undefined);
+}
+
 export default function EtfGroupsPage() {
   const [groups, setGroups] = useState<EtfGroup[]>([]);
   const [datasets, setDatasets] = useState<Dataset[]>([]);
@@ -188,7 +201,7 @@ export default function EtfGroupsPage() {
                           <option value="">— 지정 없음</option>
                           {options.map((d) => (
                             <option key={d.id} value={d.id}>
-                              {d.symbol}
+                              {d.symbol} ({d.barIntervalMinutes}분봉)
                               {d.etfGroupId !== null && d.etfGroupId !== g.id ? ` (현재: ${d.groupName})` : ""}
                             </option>
                           ))}
@@ -205,6 +218,13 @@ export default function EtfGroupsPage() {
                 })}
               </tbody>
             </table>
+            {new Set(slotIntervals(g, datasets)).size > 1 && (
+              <p className="error">
+                봉 길이가 다른 데이터가 섞여 있습니다
+                ({[...new Set(slotIntervals(g, datasets))].sort((a, b) => a - b).map((m) => `${m}분봉`).join(" / ")}) —
+                장전 추세 판정과 선물 지표는 시각이 정확히 같은 봉끼리만 맞춰 보므로, 한 그룹은 봉 길이를 통일해주세요.
+              </p>
+            )}
             {!g.ready && (
               <p className="hint">
                 비어 있는 자리: {SLOTS.filter((s) => !g[s.key]).map((s) => s.label).join(", ")} — 3개가 모두 채워지면 백테스트 화면에서 이 그룹을 선택할 수 있습니다.
@@ -221,7 +241,7 @@ export default function EtfGroupsPage() {
         ) : (
           <table>
             <thead>
-              <tr><th>종목</th><th>시장</th><th>종류</th><th>봉 수</th></tr>
+              <tr><th>종목</th><th>시장</th><th>종류</th><th>봉 길이</th><th>봉 수</th></tr>
             </thead>
             <tbody>
               {ungrouped.map((d) => (
@@ -229,6 +249,7 @@ export default function EtfGroupsPage() {
                   <td>{d.symbol}</td>
                   <td><span className="badge market">{d.market === "FUTURES" ? "선물" : "ETF"}</span></td>
                   <td className="muted">{d.kind}</td>
+                  <td><span className="badge market">{d.barIntervalMinutes}분봉</span></td>
                   <td>{d.barCount.toLocaleString()}</td>
                 </tr>
               ))}

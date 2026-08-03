@@ -18,6 +18,7 @@ public class DatasetStats {
             String symbol,
             String market,
             String kind,
+            int barIntervalMinutes,
             long barCount,
             String fromTs,
             String toTs,
@@ -47,6 +48,7 @@ public class DatasetStats {
                 """,
                 (rs, n) -> new Stats(
                         ds.getSymbol(), ds.getMarket().name(), ds.getKind().name(),
+                        ds.getBarIntervalMinutes(),
                         rs.getLong("bar_count"),
                         String.valueOf(rs.getObject("from_ts")),
                         String.valueOf(rs.getObject("to_ts")),

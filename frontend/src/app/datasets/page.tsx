@@ -57,7 +57,7 @@ export default function DatasetsPage() {
     setUploading(true);
     try {
       const ds = await api.uploadDataset(form);
-      setSuccess(`업로드 완료: ${ds.symbol} (${ds.barCount.toLocaleString()}봉)${ds.groupName ? ` · 그룹 ${ds.groupName}` : ""}`);
+      setSuccess(`업로드 완료: ${ds.symbol} (${ds.barIntervalMinutes}분봉 ${ds.barCount.toLocaleString()}개)${ds.groupName ? ` · 그룹 ${ds.groupName}` : ""}`);
       setSymbol("");
       if (fileRef.current) fileRef.current.value = "";
       await reload();
@@ -81,7 +81,7 @@ export default function DatasetsPage() {
   return (
     <div>
       <h1>데이터 업로드</h1>
-      <p className="subtitle">3분봉 엑셀을 업로드하면 DB에 적재되어 백테스트에 사용됩니다.</p>
+      <p className="subtitle">분봉 엑셀을 업로드하면 DB에 적재되어 백테스트에 사용됩니다. 봉 길이(3분/1분)는 파일에서 자동으로 읽습니다.</p>
 
       <form className="card" onSubmit={upload}>
         <h2>새 데이터 업로드</h2>
@@ -142,7 +142,7 @@ export default function DatasetsPage() {
           <table>
             <thead>
               <tr>
-                <th>종목</th><th>시장</th><th>종류</th><th>그룹</th><th>수수료</th><th>봉 수</th><th>기간</th><th></th>
+                <th>종목</th><th>시장</th><th>종류</th><th>그룹</th><th>수수료</th><th>봉 길이</th><th>봉 수</th><th>기간</th><th></th>
               </tr>
             </thead>
             <tbody>
@@ -153,6 +153,7 @@ export default function DatasetsPage() {
                   <td className="muted">{d.kind}</td>
                   <td className="muted">{d.groupName ?? "-"}</td>
                   <td className="muted">{d.feeRatePct}%</td>
+                  <td><span className="badge market">{d.barIntervalMinutes}분봉</span></td>
                   <td>{d.barCount.toLocaleString()}</td>
                   <td className="muted">{d.fromTs?.slice(0, 10)} ~ {d.toTs?.slice(0, 10)}</td>
                   <td><button className="danger" onClick={() => remove(d.id)}>삭제</button></td>
