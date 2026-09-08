@@ -1,6 +1,6 @@
--- Promote ETF pairing from a free-text group_id to a first-class group entity, so a symbol's
--- leverage / inverse / futures are assigned to a managed group (one slot each) instead of a
--- hand-typed string that must match across three uploads.
+-- ETF 쌍 묶기를 자유 입력 group_id에서 1급 그룹 엔티티로 승격합니다. 그래야 레버리지 /
+-- 인버스 / 선물이 관리되는 그룹의 슬롯(각각 하나)에 배정되고, 업로드 세 번에 걸쳐 손으로
+-- 똑같이 입력해야 하는 문자열에 의존하지 않게 됩니다.
 
 CREATE TABLE etf_group (
     id         BIGINT AUTO_INCREMENT PRIMARY KEY,
@@ -11,7 +11,7 @@ CREATE TABLE etf_group (
 
 ALTER TABLE dataset ADD COLUMN etf_group_id BIGINT NULL AFTER kind;
 
--- Backfill: create a group per distinct legacy group_id, then link datasets to it.
+-- 백필: 기존 group_id 값마다 그룹을 만들고, 데이터셋을 거기에 연결합니다.
 INSERT INTO etf_group (name, created_at)
 SELECT DISTINCT group_id, NOW()
 FROM dataset

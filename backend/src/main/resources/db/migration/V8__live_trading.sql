@@ -1,34 +1,33 @@
--- Live trading: run a saved StrategySpec against a real Korea Investment & Securities account.
+-- 실투자: 저장된 StrategySpec을 실제 한국투자증권 계좌에 대고 돌립니다.
 --
--- The rules themselves are NOT duplicated here. strategy.spec_json stays the one source of truth
--- for take-profit / stop-loss / time bands / pre-market threshold, and these tables only record
--- the execution environment (which account, how much money, what limits) and what actually
--- happened (quotes seen, orders sent, fills received). A second copy of the rules would drift
--- from the backtested one, which would make the backtest meaningless.
+-- 규칙 자체는 여기 복제하지 않습니다. 익절 / 손절 / 시간대 밴드 / 장전 임계치의 원본은
+-- strategy.spec_json 한 군데뿐이고, 이 테이블들은 실행 환경(어느 계좌, 얼마, 어떤 한도)과
+-- 실제로 일어난 일(본 시세, 보낸 주문, 받은 체결)만 기록합니다. 규칙이 두 벌이 되면
+-- 백테스트한 쪽과 어긋나고, 그러면 백테스트가 의미를 잃습니다.
 --
--- Trading mode (DRY_RUN / PAPER / REAL) is deliberately absent from live_config: it comes from an
--- environment variable so switching to a real account needs a restart, not an API call.
+-- 매매 모드(DRY_RUN / PAPER / REAL)는 일부러 live_config에 없습니다: 환경변수에서 오므로
+-- 실계좌 전환에 API 호출이 아니라 재기동이 필요합니다.
 
--- Display names ("KODEX레버리지") can't be ordered; live orders need the 6-digit code.
+-- 표시명("KODEX레버리지")으로는 주문할 수 없습니다. 실주문에는 6자리 종목코드가 필요합니다.
 ALTER TABLE dataset ADD COLUMN ticker VARCHAR(20) NULL AFTER symbol;
 
--- Single-row (id=1) live trading setup, mirroring how fee_setting works.
+-- 단일 행(id=1) 실투자 설정. fee_setting과 같은 방식입니다.
 CREATE TABLE live_config (
     id                  BIGINT       NOT NULL PRIMARY KEY,
-    strategy_id         BIGINT       NULL,           -- which saved logic to trade
-    etf_group_id        BIGINT       NULL,           -- supplies the leverage/inverse tickers
-    -- Verification gate: only a strategy that was actually backtested may reach a real account,
-    -- and the spec must still be byte-identical to what that run scored.
+    strategy_id         BIGINT       NULL,           -- 어느 저장 로직을 매매할지
+    etf_group_id        BIGINT       NULL,           -- 레버리지/인버스 종목코드의 출처
+    -- 검증 게이트: 실제로 백테스트를 거친 전략만 실계좌에 닿을 수 있고, 스펙이 그 실행이
+    -- 점수를 매긴 것과 바이트 단위로 같아야 합니다.
     verified_run_id     BIGINT       NULL,
     verified_spec_hash  VARCHAR(64)  NULL,
     min_verified_trades INT          NOT NULL DEFAULT 20,
     min_verified_days   INT          NOT NULL DEFAULT 60,
-    futures_ticker      VARCHAR(20)  NULL,           -- front-month code; changes every quarter
-    armed_date          DATE         NULL,           -- scheduler only acts when this is today
+    futures_ticker      VARCHAR(20)  NULL,           -- 최근월물 코드. 분기마다 바뀝니다
+    armed_date          DATE         NULL,           -- 이 값이 오늘일 때만 스케줄러가 움직입니다
     max_order_amount    DOUBLE       NOT NULL DEFAULT 1000000,
     max_daily_loss      DOUBLE       NOT NULL DEFAULT 200000,
     poll_interval_sec   INT          NOT NULL DEFAULT 10,
-    day_end_exit_time   VARCHAR(5)   NOT NULL DEFAULT '15:15',  -- safety margin before the close
+    day_end_exit_time   VARCHAR(5)   NOT NULL DEFAULT '15:15',  -- 장 마감 전 안전 여유
     updated_at          DATETIME     NOT NULL,
     CONSTRAINT fk_live_config_strategy FOREIGN KEY (strategy_id) REFERENCES strategy (id),
     CONSTRAINT fk_live_config_group FOREIGN KEY (etf_group_id) REFERENCES etf_group (id)
@@ -36,8 +35,8 @@ CREATE TABLE live_config (
 
 INSERT INTO live_config (id, updated_at) VALUES (1, NOW());
 
--- One session per trading day. The UNIQUE key is the duplicate-run guard: a restart mid-morning
--- rejoins the existing session instead of opening a second position.
+-- 거래일마다 세션 하나. UNIQUE 키가 중복 실행 방지 장치입니다: 오전 중에 재기동하면 두 번째
+-- 포지션을 여는 대신 기존 세션에 다시 붙습니다.
 CREATE TABLE live_session (
     id                BIGINT AUTO_INCREMENT PRIMARY KEY,
     trade_date        DATE        NOT NULL,
@@ -46,9 +45,9 @@ CREATE TABLE live_session (
                                                      -- HOLDING | EXIT_PENDING | CLOSED | HALTED
     strategy_id       BIGINT      NOT NULL,
     etf_group_id      BIGINT      NOT NULL,
-    verified_run_id   BIGINT      NULL,              -- the backtest this session was justified by
+    verified_run_id   BIGINT      NULL,              -- 이 세션의 근거가 된 백테스트
     futures_ticker    VARCHAR(20) NULL,
-    trend_pct         DOUBLE      NULL,              -- measured pre-market futures move
+    trend_pct         DOUBLE      NULL,              -- 측정된 장전 선물 움직임
     chosen_instrument VARCHAR(20) NULL,              -- LEVERAGE | INVERSE
     chosen_ticker     VARCHAR(20) NULL,
     budget_amount     DOUBLE      NULL,
@@ -57,7 +56,7 @@ CREATE TABLE live_session (
     quantity          BIGINT      NULL,
     exit_ts           DATETIME    NULL,
     exit_price        DOUBLE      NULL,
-    exit_reason       VARCHAR(20) NULL,              -- same vocabulary as trade.exit_reason
+    exit_reason       VARCHAR(20) NULL,              -- trade.exit_reason과 같은 어휘
     profit_amount     DOUBLE      NULL,
     fee_amount        DOUBLE      NULL,
     halted_reason     VARCHAR(500) NULL,
@@ -68,8 +67,8 @@ CREATE TABLE live_session (
     CONSTRAINT fk_live_session_group FOREIGN KEY (etf_group_id) REFERENCES etf_group (id)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4;
 
--- Every order the system sent. client_order_id is our own idempotency key: it is generated from
--- (session, side) so a retry after a timeout cannot open a second position.
+-- 시스템이 보낸 모든 주문. client_order_id는 우리 자체의 멱등 키로 (세션, 방향)에서 만들며,
+-- 타임아웃 뒤에 재시도해도 두 번째 포지션이 열리지 않게 합니다.
 CREATE TABLE live_order (
     id              BIGINT AUTO_INCREMENT PRIMARY KEY,
     session_id      BIGINT      NOT NULL,
@@ -86,16 +85,16 @@ CREATE TABLE live_order (
     fee_amount      DOUBLE      NULL,
     requested_at    DATETIME    NOT NULL,
     filled_at       DATETIME    NULL,
-    -- TEXT, not JSON: Hibernate's JSON mapper has no Java-time module (see StoredResult), and this
-    -- is an audit blob nobody queries into. We serialize it ourselves and store the text.
+    -- JSON이 아니라 TEXT입니다: Hibernate의 JSON 매퍼에 Java time 모듈이 없고(StoredResult
+    -- 참고), 어차피 아무도 안을 조회하지 않는 감사용 덩어리입니다. 직접 직렬화해 텍스트로 넣습니다.
     raw_response    TEXT        NULL,
     UNIQUE KEY uq_live_order_client (client_order_id),
     KEY idx_live_order_session (session_id),
     CONSTRAINT fk_live_order_session FOREIGN KEY (session_id) REFERENCES live_session (id) ON DELETE CASCADE
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4;
 
--- Futures quotes polled during the pre-market window. Kept so the 09:00 decision can be re-checked
--- afterwards against exactly the numbers it saw.
+-- 장전 구간에 폴링한 선물 시세. 09:00의 판단을 그때 본 숫자 그대로 사후에 다시 확인할 수
+-- 있도록 남겨둡니다.
 CREATE TABLE live_premarket_tick (
     id         BIGINT AUTO_INCREMENT PRIMARY KEY,
     session_id BIGINT   NOT NULL,
@@ -105,8 +104,8 @@ CREATE TABLE live_premarket_tick (
     CONSTRAINT fk_live_tick_session FOREIGN KEY (session_id) REFERENCES live_session (id) ON DELETE CASCADE
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4;
 
--- Audit trail: every state transition, order request/response and refusal. session_id is nullable
--- so checks that happen before a session exists (connection test, arming refusal) are still logged.
+-- 감사 기록: 모든 상태 전이, 주문 요청/응답, 거절. session_id가 nullable인 이유는 세션이
+-- 생기기 전의 확인(연결 점검, 활성화 거절)도 기록되게 하려고입니다.
 CREATE TABLE live_event (
     id         BIGINT AUTO_INCREMENT PRIMARY KEY,
     session_id BIGINT       NULL,

@@ -121,7 +121,13 @@ docker compose up -d mysql
 ./gradlew bootRun     # :8080
 ./gradlew test        # 파서/엔진 단위 테스트 — DB 불필요
 ./gradlew bootJar
+
+./gradlew flywayInfo      # 마이그레이션 적용 상태
+./gradlew flywayValidate  # 적용된 것과 현재 파일이 일치하는지
+./gradlew flywayRepair    # 체크섬 불일치 복구 (스키마 변경 없음)
 ```
+
+> **마이그레이션 파일을 고쳤다면** — 주석 한 줄만 바꿔도 — 이미 그 마이그레이션을 적용한 DB에서는 기동이 `Migration checksum mismatch`로 막힙니다. Flyway가 파일 내용으로 체크섬을 계산하기 때문입니다. `./gradlew flywayRepair`가 저장된 체크섬을 현재 파일에 맞춰줍니다. **이미 마이그레이션을 적용한 모든 환경에서 한 번씩** 돌려야 합니다(새로 clone한 DB는 필요 없습니다). Flyway 태스크는 `bootRun`과 같은 `DB_*` 환경변수를 읽으므로, compose 밖에서 돌린다면 `DB_HOST=localhost`를 지정하세요.
 
 **프론트엔드** (`frontend/`):
 ```bash

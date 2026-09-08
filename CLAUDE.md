@@ -19,6 +19,7 @@
 표준 Gradle/npm 명령을 씁니다(`backend/`와 `frontend/`에서 각각). 셋업 절차 전체는 `README.md` 참고. 비자명한 것만:
 
 - **`./gradlew test`는 DB가 필요 없습니다** — 파서와 엔진만 쓰는 독립 테스트입니다. `./gradlew bootRun`은 MySQL이 필요하고(`docker compose up -d mysql`), Flyway가 스키마를 자동 마이그레이션합니다.
+- **`db/migration/*.sql`은 한 글자도 고치지 마세요 — 주석까지 포함해서.** Flyway는 파일 내용으로 체크섬을 계산하므로, SQL이 그대로여도 주석만 바꾸면 이미 적용한 DB에서 기동이 `Migration checksum mismatch`로 막힙니다. 그래도 고쳐야 한다면 `./gradlew flywayRepair`(체크섬만 갱신, 스키마 무변경)를 **이미 적용된 모든 환경에서** 돌려야 합니다. 스키마 변경은 파일 수정이 아니라 새 `V{n}` 파일로 하세요.
 - `npm run dev`는 백엔드가 :8080에 떠 있어야 동작합니다.
 - `docker compose up`은 전체 스택(mysql + backend + frontend)을 띄웁니다.
 

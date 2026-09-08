@@ -1,5 +1,5 @@
--- Commission is an account-level fact, not a per-strategy one: one row holds the rate every
--- backtest uses. Seeded with the previous per-strategy default (0.015% per side).
+-- 수수료는 전략별이 아니라 계좌 차원의 사실입니다: 모든 백테스트가 쓰는 요율을 한 행에
+-- 둡니다. 이전의 전략별 기본값(편도 0.015%)으로 심어둡니다.
 CREATE TABLE fee_setting (
     id           BIGINT AUTO_INCREMENT PRIMARY KEY,
     fee_rate_pct DOUBLE   NOT NULL,

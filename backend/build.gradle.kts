@@ -1,3 +1,15 @@
+// 아래 flywayRepair/flywayValidate/flywayInfo 태스크가 Flyway Java API를 직접 부르므로,
+// 빌드 스크립트 자신의 클래스패스에 Flyway와 MySQL 드라이버가 있어야 합니다.
+// (buildscript 블록은 반드시 파일 맨 앞에 있어야 스크립트 컴파일에 반영됩니다.)
+buildscript {
+    repositories { mavenCentral() }
+    dependencies {
+        classpath("org.flywaydb:flyway-core:11.7.2")
+        classpath("org.flywaydb:flyway-mysql:11.7.2")
+        classpath("com.mysql:mysql-connector-j:9.2.0")
+    }
+}
+
 plugins {
     java
     // Kotlin과 Java를 한 모듈에서 같이 컴파일합니다. 변환을 한 번에 끝내지 않고
@@ -38,6 +50,52 @@ kotlin {
 
 repositories {
     mavenCentral()
+}
+
+// ── Flyway 운영 태스크 ────────────────────────────────────────────────────────
+// Flyway는 마이그레이션 **파일 내용**으로 체크섬을 계산합니다. SQL을 한 글자도 바꾸지 않고
+// 주석만 고쳐도 체크섬이 달라지고, 이미 그 마이그레이션을 적용한 DB에서는 기동이
+// "Migration checksum mismatch"로 막힙니다. `./gradlew flywayRepair`가 저장된 체크섬을
+// 현재 파일에 맞춰 갱신합니다 — 스키마는 건드리지 않습니다.
+//
+// Gradle 플러그인(org.flywaydb.flyway)이 아니라 Java API를 직접 부릅니다: 플러그인이 아직
+// Gradle 9에서 없어진 JavaPluginConvention을 참조해 태스크 실행이 실패합니다.
+//
+// 접속 정보는 application.yml과 같은 환경변수·같은 기본값을 읽습니다. 두 벌로 두면 한쪽만
+// 고쳐놓고 엉뚱한 DB를 repair하게 됩니다.
+fun flywayOf(): org.flywaydb.core.Flyway {
+    val host = System.getenv("DB_HOST") ?: "localhost"
+    val port = System.getenv("DB_PORT") ?: "3306"
+    val name = System.getenv("DB_NAME") ?: "stock_analysis"
+    return org.flywaydb.core.Flyway.configure()
+        .dataSource(
+            "jdbc:mysql://$host:$port/$name?connectionTimeZone=UTC&preserveInstants=false&characterEncoding=UTF-8",
+            System.getenv("DB_USER") ?: "stock",
+            System.getenv("DB_PASSWORD") ?: "stock")
+        .locations("filesystem:src/main/resources/db/migration")
+        .load()
+}
+
+tasks.register("flywayRepair") {
+    group = "flyway"
+    description = "저장된 체크섬을 현재 마이그레이션 파일에 맞춥니다 (스키마 변경 없음)."
+    doLast { flywayOf().repair() }
+}
+
+tasks.register("flywayValidate") {
+    group = "flyway"
+    description = "적용된 마이그레이션이 현재 파일과 일치하는지 확인합니다."
+    doLast { flywayOf().validate() }
+}
+
+tasks.register("flywayInfo") {
+    group = "flyway"
+    description = "마이그레이션 적용 상태를 출력합니다."
+    doLast {
+        flywayOf().info().all().forEach { m: org.flywaydb.core.api.MigrationInfo ->
+            println("  %-6s %-30s %s".format(m.getVersion(), m.getDescription(), m.getState()))
+        }
+    }
 }
 
 dependencies {

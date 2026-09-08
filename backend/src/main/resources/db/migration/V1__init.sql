@@ -1,10 +1,10 @@
--- Datasets: one row per uploaded excel file (a symbol's bar series).
+-- 데이터셋: 업로드한 엑셀 파일 하나(한 종목의 봉 계열)당 한 행.
 CREATE TABLE dataset (
     id                BIGINT AUTO_INCREMENT PRIMARY KEY,
     symbol            VARCHAR(100) NOT NULL,
     market            VARCHAR(20)  NOT NULL,           -- FUTURES | ETF | NORMAL
     kind              VARCHAR(20)  NOT NULL,           -- LEVERAGE | INVERSE | SINGLE
-    group_id          VARCHAR(100) NULL,               -- ETF leverage/inverse pair grouping
+    group_id          VARCHAR(100) NULL,               -- ETF 레버리지/인버스 쌍 묶음
     original_filename VARCHAR(255) NULL,
     bar_count         INT          NOT NULL DEFAULT 0,
     from_ts           DATETIME     NULL,
@@ -13,7 +13,7 @@ CREATE TABLE dataset (
     UNIQUE KEY uq_dataset_symbol_kind (symbol, kind)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4;
 
--- Bar data body: 3-minute OHLCV + moving averages. Source of truth for backtests.
+-- 봉 데이터 본체: 3분봉 OHLCV + 이동평균. 백테스트의 원본(source of truth)입니다.
 CREATE TABLE price_bar (
     id         BIGINT AUTO_INCREMENT PRIMARY KEY,
     dataset_id BIGINT   NOT NULL,
@@ -35,7 +35,7 @@ CREATE TABLE price_bar (
     KEY idx_price_bar_dataset_ts (dataset_id, ts)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4;
 
--- Strategy rule spec (entry/exit condition tree) stored as JSON; USER or LLM authored.
+-- 전략 규칙 스펙(매수/매도 조건 트리)을 JSON으로 저장합니다. 작성자는 USER 또는 LLM.
 CREATE TABLE strategy (
     id         BIGINT AUTO_INCREMENT PRIMARY KEY,
     name       VARCHAR(200) NOT NULL,
@@ -45,7 +45,7 @@ CREATE TABLE strategy (
     updated_at DATETIME     NOT NULL
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4;
 
--- One backtest execution: strategy x dataset, with summary metrics.
+-- 백테스트 실행 하나: 전략 × 데이터셋, 요약 지표 포함.
 CREATE TABLE backtest_run (
     id           BIGINT AUTO_INCREMENT PRIMARY KEY,
     strategy_id  BIGINT   NOT NULL,
@@ -57,7 +57,7 @@ CREATE TABLE backtest_run (
     CONSTRAINT fk_run_dataset FOREIGN KEY (dataset_id) REFERENCES dataset (id)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4;
 
--- Individual trades produced by a backtest run.
+-- 백테스트 실행이 만들어낸 개별 거래.
 CREATE TABLE trade (
     id              BIGINT AUTO_INCREMENT PRIMARY KEY,
     backtest_run_id BIGINT   NOT NULL,
