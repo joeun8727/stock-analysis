@@ -157,6 +157,8 @@ compose 밖에서 띄울 때 DB 접속 기본값은 `stock`/`stock` @ `localhost
 | `KIS_ACCOUNT_NO` / `KIS_ACCOUNT_PRODUCT_CODE` | 계좌번호 8자리 / 상품코드(보통 `01`) |
 | `KIS_QUOTE_APP_KEY` / `KIS_QUOTE_APP_SECRET` | 모의투자 서버가 국내선물 시세를 안 줄 때만. 시세는 실전 앱키로 받고 주문은 모의로 냅니다 |
 
+> ⚠️ **API에는 인증이 없습니다.** `POST /api/live/arm` 한 번이면 그날 자동매매가 켜지고, `POST /api/live/halt`는 보유 포지션을 시장가로 정리합니다. 그래서 compose는 포트를 **이 PC(`127.0.0.1`)에만** 엽니다. CORS는 브라우저만 막을 뿐 `curl`은 막지 못하므로 방어가 아닙니다. 다른 기기에서 접속해야 한다면 `.env`의 `BIND_ADDR`을 바꾸기 **전에** 인증을 먼저 붙이세요.
+
 ---
 
 ## 저장소에 없는 것

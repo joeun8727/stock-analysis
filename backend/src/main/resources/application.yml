@@ -2,9 +2,10 @@ spring:
   application:
     name: stock-analysis
   datasource:
-    # preserveInstants=false keeps DATETIME columns as wall-clock: Hibernate binds LocalDateTime
-    # through java.sql.Timestamp, and without this the driver shifts it by the JVM/server tz offset
-    # (KST -> UTC), so JPA columns would disagree with the raw-JDBC ones (price_bar.ts, trade.*_ts).
+    # preserveInstants=false 는 DATETIME 컬럼을 벽시계 그대로 유지합니다: Hibernate는
+    # LocalDateTime을 java.sql.Timestamp를 거쳐 바인딩하는데, 이게 없으면 드라이버가 JVM/서버
+    # 타임존 차이(KST -> UTC)만큼 값을 옮겨서 JPA 컬럼이 raw JDBC 컬럼(price_bar.ts,
+    # trade.*_ts)과 어긋납니다.
     url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:stock_analysis}?rewriteBatchedStatements=true&connectionTimeZone=UTC&preserveInstants=false&characterEncoding=UTF-8
     username: ${DB_USER:stock}
     password: ${DB_PASSWORD:stock}
@@ -27,27 +28,27 @@ spring:
       max-file-size: 200MB
       max-request-size: 200MB
 
-# Live trading against Korea Investment & Securities. Everything is off by default: with no app key
-# the scheduler simply never has a verified, armed strategy to run.
+# 한국투자증권 계좌로 하는 실투자. 기본은 전부 꺼져 있습니다: 앱키가 없으면 스케줄러에는
+# 검증되고 활성화된 전략이 애초에 생기지 않습니다.
 #
-# mode is DRY_RUN | PAPER | REAL and comes from the environment on purpose — moving to a real
-# account should take a deliberate restart, not an API call. Trading *rules* are not here at all;
-# they live in strategy.spec_json so live trades exactly what was backtested.
+# mode는 DRY_RUN | PAPER | REAL 이고 일부러 환경변수에서 옵니다 — 실계좌로 옮기는 데는
+# API 호출이 아니라 의도적인 재기동이 필요해야 하기 때문입니다. 매매 *규칙*은 여기 전혀
+# 없습니다. 규칙은 strategy.spec_json에 있고, 그래야 실전이 백테스트한 것을 그대로 돌립니다.
 kis:
   mode: ${KIS_MODE:DRY_RUN}
   app-key: ${KIS_APP_KEY:}
   app-secret: ${KIS_APP_SECRET:}
   account-no: ${KIS_ACCOUNT_NO:}
   account-product-code: ${KIS_ACCOUNT_PRODUCT_CODE:01}
-  # Separate credentials for quotes, for when the paper server won't serve domestic futures prices
-  # (the pre-market futures move is the entry signal, so it has to come from somewhere real).
+  # 시세 전용 자격증명. 모의투자 서버가 국내선물 시세를 주지 않을 때 씁니다
+  # (장전 선물 움직임이 곧 진입 신호라, 어딘가 실제인 곳에서 받아와야 합니다).
   quote-app-key: ${KIS_QUOTE_APP_KEY:}
   quote-app-secret: ${KIS_QUOTE_APP_SECRET:}
   ws-stale-seconds: ${KIS_WS_STALE_SECONDS:30}
 
 app:
   data-dir: ${APP_DATA_DIR:../data}
-  # LLM recommendation runs the local Claude Code CLI headlessly (no API key).
+  # LLM 추천은 로컬 Claude Code CLI를 헤드리스로 돌립니다 (API 키 없음).
   claude-bin: ${CLAUDE_BIN:claude}
   recommend-timeout-seconds: ${RECOMMEND_TIMEOUT:150}
 
