@@ -1,5 +1,7 @@
 package com.stockanalysis.backtest;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.stockanalysis.backtest.spec.CapitalMode;
 import com.stockanalysis.backtest.spec.Condition;
 import com.stockanalysis.backtest.spec.ConditionGroup;
@@ -122,14 +124,32 @@ class CapitalSizingTest {
     }
 
     @Test
-    void defaultsApplyWhenTheSpecCarriesNoCapitalBlock() {
-        StrategySpec s = tpStrategy();
-        s.setCapital(null); // e.g. an older stored spec_json
+    void defaultsApplyWhenTheSpecCarriesNoCapitalBlock() throws Exception {
+        // A spec_json written before the capital block existed: the key is simply absent.
+        ObjectMapper mapper = new ObjectMapper();
+        ObjectNode json = mapper.valueToTree(tpStrategy());
+        json.remove("capital");
 
+        StrategySpec s = mapper.treeToValue(json, StrategySpec.class);
         BacktestResult r = engine.run(s, twoWinningTrades());
 
         assertEquals("FIXED", r.money().mode());
         assertEquals(10_000_000, r.money().investAmount(), 1e-9);
         assertTrue(r.trades().get(0).quantity() > 0);
+    }
+
+    /** Some stored rows carry an explicit null rather than omitting the key; same outcome. */
+    @Test
+    void anExplicitNullCapitalBlockAlsoFallsBackToTheDefaults() throws Exception {
+        ObjectMapper mapper = new ObjectMapper();
+        ObjectNode json = mapper.valueToTree(tpStrategy());
+        json.putNull("capital");
+        json.putNull("premarket");
+
+        StrategySpec s = mapper.treeToValue(json, StrategySpec.class);
+        BacktestResult r = engine.run(s, twoWinningTrades());
+
+        assertEquals("FIXED", r.money().mode());
+        assertEquals(10_000_000, r.money().investAmount(), 1e-9);
     }
 }
