@@ -22,6 +22,12 @@ export default function Home() {
           <h2>백테스트</h2>
           <p className="muted">전략과 데이터를 골라 백테스트하고 성공/실패율을 분석합니다.</p>
         </Link>
+        <Link href="/live" className="card">
+          <h2>실투자</h2>
+          <p className="muted">
+            백테스트로 검증한 로직을 한국투자증권 계좌로 그대로 돌립니다. 검증 안 된 로직은 켜지지 않습니다.
+          </p>
+        </Link>
         <Link href="/fees" className="card">
           <h2>수수료 설정</h2>
           <p className="muted">종목별 매매 수수료율과 새 업로드에 적용할 기본값을 정합니다.</p>

@@ -142,13 +142,33 @@ export default function DatasetsPage() {
           <table>
             <thead>
               <tr>
-                <th>종목</th><th>시장</th><th>종류</th><th>그룹</th><th>수수료</th><th>봉 길이</th><th>봉 수</th><th>기간</th><th></th>
+                <th>종목</th><th>종목코드</th><th>시장</th><th>종류</th><th>그룹</th><th>수수료</th><th>봉 길이</th><th>봉 수</th><th>기간</th><th></th>
               </tr>
             </thead>
             <tbody>
               {datasets.map((d) => (
                 <tr key={d.id}>
                   <td>{d.symbol}</td>
+                  <td>
+                    {/* Backtests never need this; live orders can't be placed without it, because
+                        the symbol above is a display name, not something the exchange knows. */}
+                    <input
+                      defaultValue={d.ticker ?? ""}
+                      placeholder="예: 122630"
+                      style={{ width: 90 }}
+                      onBlur={async (e) => {
+                        const next = e.target.value.trim();
+                        if (next === (d.ticker ?? "")) return;
+                        try {
+                          await api.setDatasetTicker(d.id, next || null);
+                          await reload();
+                        } catch (err) {
+                          setError(err instanceof Error ? err.message : String(err));
+                          e.target.value = d.ticker ?? "";
+                        }
+                      }}
+                    />
+                  </td>
                   <td><span className="badge market">{MARKET_LABEL[d.market] ?? d.market}</span></td>
                   <td className="muted">{d.kind}</td>
                   <td className="muted">{d.groupName ?? "-"}</td>

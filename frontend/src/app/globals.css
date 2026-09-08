@@ -209,3 +209,32 @@ th { color: var(--muted); font-weight: 600; }
 .trade-pos { color: var(--accent-2); }
 .trade-neg { color: var(--danger); }
 .reason-tag { font-size: 11px; padding: 1px 6px; border-radius: 6px; background: var(--panel-2); color: var(--muted); }
+
+/* ── 실투자 ─────────────────────────────────────────────────────────
+   모드 배지는 눈에 띄어야 합니다: 지금 실계좌를 돌리고 있는지 아닌지가
+   화면에서 한눈에 보이지 않으면 사고가 납니다. */
+.mode-badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 12px; border-radius: 999px;
+  font-size: 12px; font-weight: 700; letter-spacing: 0.02em;
+}
+.mode-badge.DRY_RUN { background: var(--panel-2); color: var(--muted); border: 1px solid var(--border); }
+.mode-badge.PAPER { background: rgba(79,140,255,0.18); color: var(--accent); border: 1px solid rgba(79,140,255,0.4); }
+.mode-badge.REAL { background: rgba(255,90,95,0.22); color: var(--danger); border: 1px solid var(--danger); }
+
+.live-state { display: inline-block; padding: 3px 10px; border-radius: 8px; font-size: 12px; font-weight: 600; }
+.live-state.idle, .live-state.armed, .live-state.watching { background: var(--panel-2); color: var(--muted); }
+.live-state.holding, .live-state.entry_pending, .live-state.exit_pending { background: rgba(79,140,255,0.18); color: var(--accent); }
+.live-state.closed { background: rgba(56,199,147,0.18); color: var(--accent-2); }
+.live-state.skipped { background: var(--panel-2); color: var(--muted); }
+.live-state.halted { background: rgba(255,90,95,0.18); color: var(--danger); }
+
+.verify-box { border-left: 3px solid var(--accent-2); padding: 4px 0 4px 12px; }
+.verify-box.blocked { border-left-color: var(--danger); }
+.verify-metrics { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-top: 10px; }
+.verify-metrics .k { font-size: 11px; color: var(--muted); }
+.verify-metrics .v { font-size: 15px; font-weight: 700; }
+
+.danger-zone { border-color: rgba(255,90,95,0.45); }
+.event-log { max-height: 260px; overflow-y: auto; font-size: 12px; }
+.event-log td { vertical-align: top; }

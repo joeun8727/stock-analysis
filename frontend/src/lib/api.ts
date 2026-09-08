@@ -4,6 +4,12 @@ import type {
   Dataset,
   EtfGroup,
   FeeSettingDto,
+  LiveCandidate,
+  LiveCheckResult,
+  LiveConfigDto,
+  LiveConfigUpdate,
+  LiveSessionItem,
+  LiveToday,
   Meta,
   Strategy,
   StrategySpec,
@@ -150,5 +156,68 @@ export const api = {
         body: JSON.stringify({ datasetId }),
       }),
     );
+  },
+
+  /** Exchange code used for live orders. Pass null to clear it. */
+  async setDatasetTicker(id: number, ticker: string | null): Promise<Dataset> {
+    return handle(
+      await fetch(`${BASE}/api/datasets/${id}/ticker`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ticker }),
+      }),
+    );
+  },
+
+  // ── 실투자 ────────────────────────────────────────────────────────
+  // 매매 규칙을 바꾸는 함수가 없다는 점에 주목: 규칙은 전략 화면에서만 바뀝니다.
+
+  async liveConfig(): Promise<LiveConfigDto> {
+    return handle(await fetch(`${BASE}/api/live/config`, { cache: "no-store" }));
+  },
+  async updateLiveConfig(update: LiveConfigUpdate): Promise<LiveConfigDto> {
+    return handle(
+      await fetch(`${BASE}/api/live/config`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(update),
+      }),
+    );
+  },
+  /** Strategies eligible for live trading, each with its verification evidence. */
+  async liveCandidates(): Promise<LiveCandidate[]> {
+    return handle(await fetch(`${BASE}/api/live/candidates`, { cache: "no-store" }));
+  },
+  async liveToday(): Promise<LiveToday> {
+    return handle(await fetch(`${BASE}/api/live/today`, { cache: "no-store" }));
+  },
+  async liveSessions(): Promise<LiveSessionItem[]> {
+    return handle(await fetch(`${BASE}/api/live/sessions`, { cache: "no-store" }));
+  },
+  /** Turns trading on for one day. Rejected unless the strategy passed the verification gate. */
+  async liveArm(date?: string): Promise<LiveConfigDto> {
+    return handle(
+      await fetch(`${BASE}/api/live/arm`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ date: date ?? null }),
+      }),
+    );
+  },
+  async liveDisarm(): Promise<LiveConfigDto> {
+    return handle(await fetch(`${BASE}/api/live/disarm`, { method: "POST" }));
+  },
+  async liveHalt(reason: string, closePosition: boolean): Promise<LiveToday> {
+    return handle(
+      await fetch(`${BASE}/api/live/halt`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reason, closePosition }),
+      }),
+    );
+  },
+  /** Connection and setup check. Never places an order. */
+  async liveCheck(): Promise<LiveCheckResult> {
+    return handle(await fetch(`${BASE}/api/live/check`, { method: "POST" }));
   },
 };

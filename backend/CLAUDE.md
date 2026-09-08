@@ -26,3 +26,19 @@
 
 ### LLM 추천 (`recommend/` 패키지)
 `RecommendationService.recommend(datasetId)`는 사용자가 직접 만드는 것과 동일한 JSON 포맷의 `StrategySpec`을 생성합니다. `ClaudeCliRecommendationService` 구현체는 **로컬 Claude Code CLI를 헤드리스로** 호출합니다(`ProcessBuilder`로 `claude -p <prompt> --output-format json`) — Anthropic API 키가 필요 없고 개발자의 기존 Claude Code 인증을 씁니다. `DatasetStats`가 프롬프트에 넣을 종목별 통계 요약을 만들고, 응답에서 JSON 배열을 추출해(코드펜스/설명문이 섞여도 견딤) 검증합니다. `POST /api/recommendations {datasetId}`가 각 결과를 `source=LLM` 전략으로 저장합니다. **이 기능은 `claude`가 설치·인증된 환경에서 백엔드가 돌 때만 동작합니다(로컬 개발 환경, Docker 이미지 아님)**. 바이너리 경로는 `CLAUDE_BIN`으로 설정합니다. 나중에 실제 Anthropic API로 바꾸려면 `RecommendationService` 구현체를 하나 더 추가하면 되고, 나머지는 그대로입니다.
+
+### 실투자 (`live/` 패키지) — 백테스트한 로직을 한국투자증권 계좌로
+백테스트와 **같은 `StrategySpec`** 을 실계좌에 올립니다. 판단 코드를 옮겨 적지 않고 **공유**하는 것이 이 기능의 전제입니다: `BacktestEngine`에서 `ExitEvaluator`(청산 우선순위·시간대 밴드·손절 우선 타이브레이크)와 `PremarketDecider`(장전 변화율 → 레버리지/인버스/스킵)를 추출했고 엔진은 거기에 위임합니다. `PremarketDecider.decide`는 **시각+가격 쌍 목록**이라는 최소 입력을 받으므로 백테스트는 선물 봉 종가를, 실투자는 KIS API에서 폴링한 시세를 그대로 넘깁니다. `ExitEvaluator.checkLivePrice`는 봉 마감 전 틱 단위로 손절/익절만 보는 경량 경로입니다(백테스트가 봉의 고가/저가로 하는 장중 판정과 같은 의미).
+
+**경계**: 실투자 경로는 `price_bar`도 업로드된 엑셀도 ETF 그룹의 **선물 데이터셋도** 읽지 않습니다. 실전에 필요한 선물 정보는 `live_config.futures_ticker` 하나뿐입니다(월물이 분기마다 바뀌므로 직접 입력).
+
+- **검증 게이트**(`VerificationGate`): 백테스트 이력이 있는 ETF 장전 전략만 실투자 후보가 됩니다. `live_config`에 근거 실행(`verified_run_id`)과 **그때의 스펙 해시**(`SpecHasher`: 이름 제외, 속성 알파벳 정렬 후 SHA-256)를 저장하고, 매 세션 `ARMED` 단계에서 현재 스펙 해시와 대조합니다. 검증 후 규칙을 고치면 해시가 어긋나 주문이 나가지 않습니다 — 이게 "먼저 백테스트"를 관례가 아니라 규칙으로 만드는 장치입니다. 해시가 없으면 "최근 실행이 최근 수정보다 오래됐는지"로 폴백합니다. 최소 거래 수·검증 기간 하한도 여기서 봅니다.
+- **상태 기계**(`LiveTradingService.tick(now)`): `ARMED → WATCHING → (SKIPPED | ENTRY_PENDING → HOLDING → EXIT_PENDING → CLOSED)`, 어디서든 `HALTED`. **시각을 인자로 받으므로** 하루치를 테스트에서 수 밀리초에 재생할 수 있습니다(`LiveSessionTest`). `LiveScheduler`는 언제 부를지만 정합니다(평일 08:30~15:50, 2초 간격). `live_session.trade_date` UNIQUE + `client_order_id`(세션·방향당 하나) UNIQUE가 중복 진입을 막습니다.
+- **백테스트와 의도적으로 다른 두 가지**: ① 백테스트는 "데이터의 마지막 봉"에 장마감 청산하지만 실전은 **설정 시각(기본 15:15)** 에 냅니다 — 종가 단일가에 주문이 걸리면 원하는 때 체결되지 않기 때문. 그래서 `ExitEvaluator.decide` 호출 시 `lastBarOfDay=false`를 넘기고 장마감은 시계로 따로 처리합니다. ② 백테스트는 손절가에 정확히 체결되지만 실전은 실제 체결가입니다(슬리피지). 화면이 이 점을 안내합니다.
+- **지표 워밍업**: 지표 기반 매도 조건이 있을 때만 KIS 분봉으로 전일까지 백필합니다(3분봉 volMA120 = 6시간치). 실패하거나 부족하면 그 지표는 `NaN`으로 두고 — 엔진 규약상 `NaN` 비교는 false라 조건이 발동하지 않습니다. **전일 종가로 메우지 않습니다.**
+- **모드**(`LiveMode`, `KIS_MODE` 환경변수): `DRY_RUN`(판단·기록만, 시세는 실제) → `PAPER`(모의투자 서버) → `REAL`. **API로는 못 바꿉니다** — 실계좌 전환은 재기동이 필요하도록 일부러 환경변수로만 뒀습니다. `BrokerConfig`가 기동 시 한 번 결정합니다.
+- **안전장치**: 당일 활성화 스위치(`armed_date`가 오늘이 아니면 스케줄러가 아무것도 안 함, 자정에 자동 해제), 킬 스위치(`POST /api/live/halt`, 옵션으로 시장가 청산), 1회 주문금액 상한·일일 손실 한도, 재기동 시 **잔고 대조**(불일치하면 사거나 팔지 않고 `HALTED`), 모든 전이·주문·응답을 `live_event`에 기록.
+- **KIS 어댑터**(`live/broker`): `tr_id`는 KIS가 개편한 이력이 있어 전부 `KisProperties.TrIds`에서 설정으로 덮어쓸 수 있습니다 — **실계좌 전에 공식 문서와 대조하세요**. 응답 필드명이 엔드포인트마다 달라 `readDouble`이 후보 이름을 순서대로 시도합니다. 접근토큰은 재발급 제한 때문에 `${app.data-dir}/.kis-token.json`에 소유자 전용 권한으로 영속화합니다. 시세는 **하이브리드**(`LivePriceFeed`): 보유 중 ETF는 WebSocket 체결가, 끊기거나 `ws-stale-seconds` 넘게 조용하면 자동으로 REST 폴백(화면에 표시). **선물은 항상 REST** — 장전은 동시호가라 체결 스트림에 나올 게 없습니다.
+- **⚠ 미검증 리스크**: 08:45~09:00은 파생 장 개시 전 구간이라 KIS 선물 API가 이때 **갱신된 값을 주는지 실제 장전 시간에 확인해야 합니다**(`POST /api/live/check`가 예상체결가 여부까지 표시). 여기가 틀리면 매수 방향 자체가 틀립니다. `futuresQuote`는 `antc_cnpr`(예상체결가)를 먼저 보고 없으면 현재가를 씁니다.
+- **DB**(`V8__live_trading.sql`): `live_config`(id=1 단일 행), `live_session`(하루 하나), `live_order`, `live_premarket_tick`(09:00 판단을 사후 재현하기 위한 원본 시세), `live_event`(감사). `raw_response`/`detail`은 JSON 컬럼이 아니라 **TEXT**입니다 — Hibernate의 JSON 매퍼에 Java time 모듈이 없는 문제(`StoredResult` 참고)를 피하고, 어차피 조회 대상이 아닙니다. `dataset.ticker`는 주문용 6자리 코드(`symbol`은 표시명이라 주문 불가).
+- **API**(`/api/live`): `config`(GET/PUT — **매매 규칙 필드 없음**), `candidates`(후보 전략 + 검증 근거), `arm`/`disarm`(당일 스위치), `today`(현재 세션), `sessions`(이력), `halt`(킬 스위치), `check`(연결 점검, 주문 없음).

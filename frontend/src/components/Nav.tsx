@@ -8,6 +8,7 @@ const LINKS = [
   { href: "/datasets", label: "데이터 업로드" },
   { href: "/etf-groups", label: "ETF 그룹" },
   { href: "/backtest", label: "백테스트" },
+  { href: "/live", label: "실투자" },
   { href: "/fees", label: "수수료" },
   { href: "/guide", label: "매도 조건 가이드" },
 ];

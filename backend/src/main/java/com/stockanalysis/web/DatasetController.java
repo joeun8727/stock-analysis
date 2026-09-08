@@ -36,12 +36,12 @@ public class DatasetController {
         this.groupRepo = groupRepo;
     }
 
-    public record DatasetDto(Long id, String symbol, Market market, Kind kind,
+    public record DatasetDto(Long id, String symbol, String ticker, Market market, Kind kind,
                              Long etfGroupId, String groupName, double feeRatePct,
                              String originalFilename, int barCount, int barIntervalMinutes,
                              LocalDateTime fromTs, LocalDateTime toTs, LocalDateTime uploadedAt) {
         static DatasetDto from(Dataset d, String groupName) {
-            return new DatasetDto(d.getId(), d.getSymbol(), d.getMarket(), d.getKind(),
+            return new DatasetDto(d.getId(), d.getSymbol(), d.getTicker(), d.getMarket(), d.getKind(),
                     d.getEtfGroupId(), groupName, d.getFeeRatePct(),
                     d.getOriginalFilename(), d.getBarCount(), d.getBarIntervalMinutes(),
                     d.getFromTs(), d.getToTs(), d.getUploadedAt());
@@ -73,6 +73,15 @@ public class DatasetController {
     @PatchMapping("/{id}/group")
     public DatasetDto setGroup(@PathVariable long id, @RequestBody GroupRequest req) {
         return withGroupName(etfGroups.assignDataset(id, req.etfGroupId()));
+    }
+
+    public record TickerRequest(String ticker) {
+    }
+
+    /** Exchange code for live orders (e.g. 122630). Send null or "" to clear it. */
+    @PatchMapping("/{id}/ticker")
+    public DatasetDto setTicker(@PathVariable long id, @RequestBody TickerRequest req) {
+        return withGroupName(service.setTicker(id, req.ticker()));
     }
 
     public record FeeRequest(double feeRatePct) {

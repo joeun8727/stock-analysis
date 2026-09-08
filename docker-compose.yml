@@ -33,6 +33,14 @@ services:
       DB_USER: ${MYSQL_USER}
       DB_PASSWORD: ${MYSQL_PASSWORD}
       APP_DATA_DIR: /app/data
+      # 실투자 자격증명 — .env에 없으면 빈 값이고, 그러면 실투자 기능은 동작하지 않습니다.
+      KIS_MODE: ${KIS_MODE:-DRY_RUN}
+      KIS_APP_KEY: ${KIS_APP_KEY:-}
+      KIS_APP_SECRET: ${KIS_APP_SECRET:-}
+      KIS_ACCOUNT_NO: ${KIS_ACCOUNT_NO:-}
+      KIS_ACCOUNT_PRODUCT_CODE: ${KIS_ACCOUNT_PRODUCT_CODE:-01}
+      KIS_QUOTE_APP_KEY: ${KIS_QUOTE_APP_KEY:-}
+      KIS_QUOTE_APP_SECRET: ${KIS_QUOTE_APP_SECRET:-}
     ports:
       - "8080:8080"
     volumes:

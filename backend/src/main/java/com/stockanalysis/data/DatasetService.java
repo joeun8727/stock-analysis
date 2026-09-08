@@ -111,6 +111,30 @@ public class DatasetService {
         return d;
     }
 
+    /**
+     * Sets the exchange code used for live orders. Backtests never read it, so it stays optional —
+     * but live trading refuses a dataset without one, since {@code symbol} is only a display name.
+     */
+    @Transactional
+    public Dataset setTicker(long id, String ticker) {
+        Dataset d = repo.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("데이터셋을 찾을 수 없습니다: " + id));
+        d.setTicker(validateTicker(ticker));
+        return d;
+    }
+
+    /** Korean listed codes are 6 digits; futures codes are short alphanumerics like "101W03". */
+    private static String validateTicker(String ticker) {
+        if (ticker == null || ticker.isBlank()) {
+            return null; // clearing it is allowed
+        }
+        String trimmed = ticker.trim().toUpperCase();
+        if (!trimmed.matches("[A-Z0-9]{4,12}")) {
+            throw new IllegalArgumentException("종목코드 형식이 올바르지 않습니다: " + ticker);
+        }
+        return trimmed;
+    }
+
     @Transactional
     public void delete(long id) {
         if (!repo.existsById(id)) {

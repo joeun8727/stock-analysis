@@ -24,6 +24,14 @@ public class Dataset {
     @Column(nullable = false)
     private String symbol;
 
+    /**
+     * Exchange code used to place real orders (e.g. "122630"). {@code symbol} is a display name and
+     * cannot be ordered against, so live trading refuses a dataset whose ticker is unset. Backtests
+     * never read this.
+     */
+    @Column(name = "ticker", length = 20)
+    private String ticker;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private Market market;
@@ -79,6 +87,14 @@ public class Dataset {
 
     public void setSymbol(String symbol) {
         this.symbol = symbol;
+    }
+
+    public String getTicker() {
+        return ticker;
+    }
+
+    public void setTicker(String ticker) {
+        this.ticker = (ticker == null || ticker.isBlank()) ? null : ticker.trim();
     }
 
     public Market getMarket() {

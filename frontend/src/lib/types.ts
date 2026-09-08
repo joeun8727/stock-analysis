@@ -89,6 +89,8 @@ export type Strategy = {
 export type Dataset = {
   id: number;
   symbol: string;
+  /** Exchange code for live orders (e.g. "122630"). Unused by backtests; required to trade. */
+  ticker: string | null;
   market: "FUTURES" | "ETF" | "NORMAL";
   kind: "LEVERAGE" | "INVERSE" | "SINGLE";
   etfGroupId: number | null;
@@ -215,4 +217,158 @@ export type BacktestListItem = {
   params: RunParams | null;
   summary: Summary | null;
   money: MoneySummary | null;
+};
+
+// ── 실투자 (한국투자증권) ──────────────────────────────────────────────
+// 매매 규칙 타입이 여기 없는 것에 주목하세요. 익절·손절·시간대 밴드·장전 임계치는
+// StrategySpec 하나에만 있고, 실투자는 그것을 읽기만 합니다.
+
+/** DRY_RUN: 주문 미전송, PAPER: 모의투자 서버, REAL: 실계좌. 환경변수로만 바뀝니다. */
+export type LiveMode = "DRY_RUN" | "PAPER" | "REAL";
+
+export type LiveState =
+  | "IDLE"
+  | "ARMED"
+  | "WATCHING"
+  | "SKIPPED"
+  | "ENTRY_PENDING"
+  | "HOLDING"
+  | "EXIT_PENDING"
+  | "CLOSED"
+  | "HALTED";
+
+/** 이 전략을 실투자에 써도 되는지, 그리고 그 근거가 된 백테스트. */
+export type VerificationStatus = {
+  verified: boolean;
+  reason: string;
+  runId: number | null;
+  runCreatedAt: string | null;
+  totalTrades: number | null;
+  winRate: number | null;
+  profitLossRatio: number | null;
+  maxDrawdown: number | null;
+  totalProfitAmount: number | null;
+  fromTs: string | null;
+  toTs: string | null;
+  spanDays: number | null;
+};
+
+export type LiveCandidate = {
+  strategyId: number;
+  name: string;
+  source: string;
+  status: VerificationStatus;
+};
+
+export type LiveConfigDto = {
+  strategyId: number | null;
+  etfGroupId: number | null;
+  futuresTicker: string | null;
+  verifiedRunId: number | null;
+  specVerified: boolean;
+  maxOrderAmount: number;
+  maxDailyLoss: number;
+  pollIntervalSec: number;
+  dayEndExitTime: string;
+  minVerifiedTrades: number;
+  minVerifiedDays: number;
+  armedDate: string | null;
+  updatedAt: string | null;
+};
+
+export type LiveConfigUpdate = Partial<{
+  strategyId: number;
+  etfGroupId: number;
+  futuresTicker: string;
+  maxOrderAmount: number;
+  maxDailyLoss: number;
+  pollIntervalSec: number;
+  dayEndExitTime: string;
+  minVerifiedTrades: number;
+  minVerifiedDays: number;
+}>;
+
+export type LiveOrderView = {
+  side: "BUY" | "SELL";
+  ticker: string;
+  quantity: number;
+  status: string;
+  filledQuantity: number;
+  filledPrice: number | null;
+  requestedAt: string | null;
+  filledAt: string | null;
+  brokerOrderNo: string | null;
+};
+
+export type LiveEventView = { ts: string | null; type: string; message: string };
+
+export type LiveTickPoint = { ts: string; price: number };
+
+export type LiveToday = {
+  mode: LiveMode;
+  armed: boolean;
+  armedDate: string | null;
+  state: LiveState;
+  tradeDate: string;
+  sessionId: number | null;
+  strategyName: string | null;
+  verifiedRunId: number | null;
+  futuresTicker: string | null;
+  trendPct: number | null;
+  thresholdPct: number | null;
+  premarketStart: string | null;
+  premarketEnd: string | null;
+  premarketSamples: number;
+  premarketTicks: LiveTickPoint[];
+  chosenInstrument: string | null;
+  chosenTicker: string | null;
+  entryPrice: number | null;
+  quantity: number | null;
+  currentPrice: number | null;
+  unrealisedProfit: number | null;
+  /** 지금 적용 중인 손절·익절 가격 (시간대 밴드 반영). */
+  stopPrice: number | null;
+  takeProfitPrice: number | null;
+  exitPrice: number | null;
+  exitReason: string | null;
+  profitAmount: number | null;
+  feeAmount: number | null;
+  haltedReason: string | null;
+  /** WEBSOCKET이면 실시간 체결가, REST면 폴링으로 대체 중. */
+  priceSource: "WEBSOCKET" | "REST";
+  dayEndExitTime: string;
+  orders: LiveOrderView[];
+  events: LiveEventView[];
+  verification: VerificationStatus;
+};
+
+export type LiveSessionItem = {
+  sessionId: number;
+  tradeDate: string;
+  mode: LiveMode;
+  state: LiveState;
+  strategyName: string | null;
+  verifiedRunId: number | null;
+  trendPct: number | null;
+  chosenInstrument: string | null;
+  chosenTicker: string | null;
+  entryPrice: number | null;
+  exitPrice: number | null;
+  quantity: number | null;
+  exitReason: string | null;
+  profitAmount: number | null;
+  feeAmount: number | null;
+  haltedReason: string | null;
+};
+
+export type LiveCheckResult = {
+  mode: LiveMode;
+  account: string;
+  tokenOk: boolean;
+  balanceOk: boolean;
+  cashAvailable: number | null;
+  futuresTicker: string | null;
+  futuresPrice: number | null;
+  futuresEstimated: boolean;
+  problems: string[];
 };

@@ -27,6 +27,24 @@ spring:
       max-file-size: 200MB
       max-request-size: 200MB
 
+# Live trading against Korea Investment & Securities. Everything is off by default: with no app key
+# the scheduler simply never has a verified, armed strategy to run.
+#
+# mode is DRY_RUN | PAPER | REAL and comes from the environment on purpose — moving to a real
+# account should take a deliberate restart, not an API call. Trading *rules* are not here at all;
+# they live in strategy.spec_json so live trades exactly what was backtested.
+kis:
+  mode: ${KIS_MODE:DRY_RUN}
+  app-key: ${KIS_APP_KEY:}
+  app-secret: ${KIS_APP_SECRET:}
+  account-no: ${KIS_ACCOUNT_NO:}
+  account-product-code: ${KIS_ACCOUNT_PRODUCT_CODE:01}
+  # Separate credentials for quotes, for when the paper server won't serve domestic futures prices
+  # (the pre-market futures move is the entry signal, so it has to come from somewhere real).
+  quote-app-key: ${KIS_QUOTE_APP_KEY:}
+  quote-app-secret: ${KIS_QUOTE_APP_SECRET:}
+  ws-stale-seconds: ${KIS_WS_STALE_SECONDS:30}
+
 app:
   data-dir: ${APP_DATA_DIR:../data}
   # LLM recommendation runs the local Claude Code CLI headlessly (no API key).

@@ -1,8 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api";
-import type { Condition, Dataset, Meta, Strategy } from "@/lib/types";
+import type { Condition, Dataset, Meta, Strategy, VerificationStatus } from "@/lib/types";
 import RuleBuilder from "@/components/RuleBuilder";
 
 function operandText(o: { indicator?: string; const?: number | null }): string {
@@ -11,6 +12,45 @@ function operandText(o: { indicator?: string; const?: number | null }): string {
 }
 function condText(c: Condition): string {
   return `${operandText(c.left)} ${c.op} ${operandText(c.right)}`;
+}
+
+/**
+ * Whether this saved logic may be traded with money, shown right next to the logic itself.
+ *
+ * <p>The same StrategySpec drives the backtest and the live account, so this column is the visible
+ * form of the rule that keeps them honest: a strategy is tradeable only while the rules on screen
+ * are still the rules a backtest scored. Edit the rules and this reverts to "백테스트 필요".
+ */
+function LiveReadiness({
+  strategy,
+  status,
+}: {
+  strategy: Strategy;
+  status: VerificationStatus | undefined;
+}) {
+  const premarket = strategy.spec.targetType === "ETF" && strategy.spec.premarket?.enabled;
+  if (!premarket) {
+    return <span className="muted" style={{ fontSize: 12 }}>—</span>;
+  }
+  if (!status) {
+    return <span className="muted" style={{ fontSize: 12 }}>확인 중…</span>;
+  }
+  if (!status.verified) {
+    return (
+      <Link href="/backtest" className="pill" title={status.reason}>
+        백테스트 필요
+      </Link>
+    );
+  }
+  return (
+    <Link
+      href="/live"
+      className="badge llm"
+      title={`백테스트 #${status.runId} · ${status.totalTrades}건 · ${status.spanDays}일`}
+    >
+      검증됨 {status.winRate?.toFixed(0)}%
+    </Link>
+  );
 }
 
 export default function StrategiesPage() {
@@ -22,12 +62,20 @@ export default function StrategiesPage() {
   const [recDatasetId, setRecDatasetId] = useState<number | "">("");
   const [recommending, setRecommending] = useState(false);
   const [recMsg, setRecMsg] = useState<string | null>(null);
+  const [liveStatus, setLiveStatus] = useState<Map<number, VerificationStatus>>(new Map());
 
   const reload = useCallback(async () => {
     try {
       setStrategies(await api.listStrategies());
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
+    }
+    try {
+      const candidates = await api.liveCandidates();
+      setLiveStatus(new Map(candidates.map((c) => [c.strategyId, c.status])));
+    } catch {
+      // Live trading may not be set up at all; the column just stays empty.
+      setLiveStatus(new Map());
     }
   }, []);
 
@@ -126,6 +174,7 @@ export default function StrategiesPage() {
                 <th>구분</th>
                 <th>매수 조건</th>
                 <th>익절/손절</th>
+                <th>실투자</th>
                 <th></th>
               </tr>
             </thead>
@@ -148,6 +197,9 @@ export default function StrategiesPage() {
                         <span className="pill">🕐 시간대 {s.spec.exit.bands!.length}</span>
                       </>
                     )}
+                  </td>
+                  <td>
+                    <LiveReadiness strategy={s} status={liveStatus.get(s.id)} />
                   </td>
                   <td>
                     <div className="row">
