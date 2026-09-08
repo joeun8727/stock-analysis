@@ -15,11 +15,11 @@ function condText(c: Condition): string {
 }
 
 /**
- * Whether this saved logic may be traded with money, shown right next to the logic itself.
+ * 이 저장된 로직으로 돈을 걸 수 있는지를, 로직 바로 옆에 보여줍니다.
  *
- * <p>The same StrategySpec drives the backtest and the live account, so this column is the visible
- * form of the rule that keeps them honest: a strategy is tradeable only while the rules on screen
- * are still the rules a backtest scored. Edit the rules and this reverts to "백테스트 필요".
+ * <p>같은 StrategySpec이 백테스트와 실계좌를 함께 굴리므로, 이 컬럼은 둘을 정직하게 유지하는
+ * 규칙의 눈에 보이는 형태입니다: 화면의 규칙이 아직 백테스트가 점수를 매긴 그 규칙일 때만
+ * 매매할 수 있습니다. 규칙을 고치면 "백테스트 필요"로 돌아갑니다.
  */
 function LiveReadiness({
   strategy,
@@ -74,7 +74,7 @@ export default function StrategiesPage() {
       const candidates = await api.liveCandidates();
       setLiveStatus(new Map(candidates.map((c) => [c.strategyId, c.status])));
     } catch {
-      // Live trading may not be set up at all; the column just stays empty.
+      // 실투자가 아예 설정돼 있지 않을 수 있습니다. 그러면 이 컬럼은 그냥 비어 있습니다.
       setLiveStatus(new Map());
     }
   }, []);

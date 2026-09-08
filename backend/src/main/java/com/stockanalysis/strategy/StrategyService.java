@@ -68,7 +68,7 @@ public class StrategyService {
         if (spec == null) {
             throw new IllegalArgumentException("전략 내용이 비어 있습니다.");
         }
-        // ETF pre-market strategies enter via the futures trend gate, so entry conditions are optional.
+        // ETF 장전 전략은 선물 추세 게이트로 진입하므로 매수 조건이 선택 사항입니다.
         if (!spec.usesPremarket() && (spec.getEntry() == null || spec.getEntry().isEmpty())) {
             throw new IllegalArgumentException("매수 조건을 최소 1개 이상 추가해주세요.");
         }
@@ -76,9 +76,9 @@ public class StrategyService {
     }
 
     /**
-     * Time bands are matched in list order, so overlaps are allowed (first match wins) — but a
-     * window the engine could never match is always a mistake, and silently ignoring it would look
-     * like the setting did nothing.
+     * 시간대 밴드는 목록 순서로 맞춰지므로 겹침이 허용됩니다(먼저 맞는 것이 이깁니다) — 하지만
+     * 엔진이 절대 맞출 수 없는 구간은 언제나 실수이고, 그걸 조용히 무시하면 설정이 아무 일도
+     * 안 한 것처럼 보입니다.
      */
     private void validateBands(StrategySpec spec) {
         ExitSpec exit = spec.getExit();

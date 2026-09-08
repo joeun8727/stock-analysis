@@ -9,15 +9,15 @@ import java.time.Instant;
 import java.util.Optional;
 
 /**
- * The one place live trading asks "what is this worth right now".
+ * 실투자가 "지금 이게 얼마인가"를 묻는 단 한 곳.
  *
- * <p>Hybrid by design: the WebSocket gives tick-speed reaction while a position is open, and REST
- * covers everything else — the pre-market futures window, and any moment the socket is down or
- * quiet. The fallback is automatic and silent to callers, so a dropped connection never stops the
- * session; {@link #sourceLabel()} exists so the screen can still say which path is live.
+ * <p>설계상 하이브리드입니다: 포지션이 열려 있는 동안은 WebSocket이 틱 속도의 반응을 주고,
+ * 나머지는 REST가 맡습니다 — 장전 선물 구간, 그리고 소켓이 죽었거나 조용한 모든 순간.
+ * 폴백은 자동이고 호출자에게는 보이지 않아서 연결이 끊겨도 세션이 멈추지 않습니다.
+ * {@link #sourceLabel()}이 있는 건 그래도 화면이 어느 경로로 받고 있는지 말할 수 있게 하려고입니다.
  *
- * <p>Futures are always REST: the pre-market call auction publishes an indicative price rather than
- * trades, and the trade stream has nothing to say until the market actually opens.
+ * <p>선물은 항상 REST입니다: 장전 동시호가는 체결이 아니라 예상체결가를 내보내고, 체결 스트림은
+ * 장이 실제로 열리기 전까지 할 말이 없습니다.
  */
 @Component
 public class LivePriceFeed {
@@ -35,7 +35,7 @@ public class LivePriceFeed {
         this.stream = new KisWebSocketPriceFeed(props, tokens, mapper);
     }
 
-    /** Start streaming a ticker. Best-effort — if the socket won't open, REST carries the session. */
+    /** 종목 스트리밍을 시작합니다. 최선 노력 — 소켓이 안 열리면 REST가 세션을 끌고 갑니다. */
     public void watch(String ticker) {
         stream.watch(ticker);
     }
@@ -49,9 +49,9 @@ public class LivePriceFeed {
     }
 
     /**
-     * Latest price for a stock/ETF: the streamed tick when it is fresh, otherwise a REST quote.
-     * "Fresh" is {@code kis.ws-stale-seconds} — long enough to ride out a quiet minute in a thin
-     * ETF, short enough that we never act on a stale price.
+     * 주식/ETF의 최신 가격: 스트리밍 틱이 신선하면 그것을, 아니면 REST 시세를 씁니다.
+     * "신선함"의 기준은 {@code kis.ws-stale-seconds}입니다 — 거래가 얇은 ETF에서 조용한 1분을
+     * 넘길 만큼은 길고, 낡은 가격으로 행동하지 않을 만큼은 짧게.
      */
     public Quote stockPrice(String ticker) {
         Optional<KisWebSocketPriceFeed.Tick> tick = stream.latest(ticker);
@@ -63,13 +63,13 @@ public class LivePriceFeed {
         return broker.stockQuote(ticker);
     }
 
-    /** Futures price. Always REST — see the class note on the pre-market auction. */
+    /** 선물 가격. 항상 REST입니다 — 장전 동시호가에 대한 클래스 설명 참고. */
     public Quote futuresPrice(String ticker) {
         lastRestQuoteAt = Instant.now();
         return broker.futuresQuote(ticker);
     }
 
-    /** Which path is actually serving prices, for display. */
+    /** 지금 실제로 가격을 주고 있는 경로. 화면 표시용. */
     public String sourceLabel() {
         return isStreaming() ? "WEBSOCKET" : "REST";
     }

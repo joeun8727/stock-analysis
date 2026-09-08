@@ -13,7 +13,7 @@ import type {
   VerificationStatus,
 } from "@/lib/types";
 
-/** Poll fast enough that a state change is visible, slow enough to be polite. */
+/** 상태 변화가 눈에 보일 만큼은 빠르게, 서버에 무례하지 않을 만큼은 느리게 폴링합니다. */
 const REFRESH_MS = 3000;
 
 const MODE_LABEL: Record<string, string> = {
@@ -86,7 +86,7 @@ export default function LivePage() {
     reloadAll();
   }, [reloadAll]);
 
-  // Status refreshes on its own; the settings form does not, so typing isn't interrupted.
+  // 상태는 알아서 갱신되지만 설정 폼은 갱신하지 않습니다. 타이핑이 끊기지 않도록.
   useEffect(() => {
     const id = setInterval(reloadStatus, REFRESH_MS);
     return () => clearInterval(id);
@@ -604,8 +604,8 @@ function PremarketPanel({ today }: { today: LiveToday }) {
 }
 
 /**
- * Percent change from the first sample, drawn against the threshold lines — the same first-to-last
- * measurement the decision uses, so the picture and the decision cannot disagree.
+ * 첫 표본 대비 변화율을 임계치 선과 함께 그립니다 — 판단이 쓰는 것과 같은 첫값–끝값 측정이라,
+ * 그림과 결정이 어긋날 수 없습니다.
  */
 function TrendSparkline({
   ticks,
@@ -709,7 +709,7 @@ function PositionPanel({ today }: { today: LiveToday }) {
   );
 }
 
-/** Live orders need exchange codes; the display symbol can't be ordered against. */
+/** 실주문에는 종목코드가 필요합니다. 표시명으로는 주문할 수 없습니다. */
 function TickerCheck({ group, datasets }: { group: EtfGroup; datasets: Dataset[] }) {
   const rows = [
     { label: "레버리지", slot: group.leverage },

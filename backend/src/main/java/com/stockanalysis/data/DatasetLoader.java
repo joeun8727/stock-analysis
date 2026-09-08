@@ -12,7 +12,7 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
-/** Loads a dataset's bars from {@code price_bar} in ascending time order into a {@link BarSeries}. */
+/** 데이터셋의 봉을 {@code price_bar}에서 시간 오름차순으로 읽어 {@link BarSeries}로 만듭니다. */
 @Component
 public class DatasetLoader {
 
@@ -41,12 +41,12 @@ public class DatasetLoader {
     }
 
     /**
-     * Loads bars within an inclusive calendar range; either bound may be null for "open ended".
-     * Filtering happens in SQL so a one-month backtest doesn't pull 150k rows into memory.
+     * 양끝을 포함하는 달력 구간 안의 봉을 불러옵니다. 어느 쪽이든 null이면 "열린 구간"입니다.
+     * 필터링은 SQL에서 하므로 한 달치 백테스트가 15만 행을 메모리로 끌어오지 않습니다.
      *
-     * <p>{@code to} is inclusive of the whole day, so the predicate is {@code ts < to + 1 day}.
-     * Bounds are bound as {@code LocalDateTime} (never {@code Timestamp}) to match the KST
-     * wall-clock convention {@code price_bar.ts} is written with.
+     * <p>{@code to}는 그날 하루 전체를 포함하므로 조건이 {@code ts < to + 1 day}입니다.
+     * 경계값은 {@code price_bar.ts}를 기록할 때 쓴 KST 벽시계 규약에 맞추기 위해
+     * {@code LocalDateTime}으로 바인딩합니다({@code Timestamp}는 절대 쓰지 않습니다).
      */
     public BarSeries load(long datasetId, LocalDate from, LocalDate to) {
         StringBuilder sql = new StringBuilder(SELECT);

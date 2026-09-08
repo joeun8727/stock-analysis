@@ -19,7 +19,7 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** Money sizing: whole shares, commission on both legs, fixed vs compound deployment. */
+/** 금액 환산: 정수 주식 수, 매수·매도 양쪽 수수료, 고정 vs 복리 투입. */
 class CapitalSizingTest {
 
     private final BacktestEngine engine = new BacktestEngine();
@@ -29,14 +29,14 @@ class CapitalSizingTest {
                 Double.NaN, Double.NaN, Double.NaN, Double.NaN, Double.NaN);
     }
 
-    /** Two identical +1% take-profit trades on separate days, entry at 1,000. */
+    /** 서로 다른 날에 일어나는, 1,000에 진입하는 +1% 익절 거래 두 개. */
     private static BarSeries twoWinningTrades() {
         List<Bar> bars = new ArrayList<>();
         for (int day = 5; day <= 6; day++) {
             LocalDateTime d = LocalDateTime.of(2026, 1, day, 9, 0);
-            bars.add(bar(d, 1000, 1000, 1000, 1000, 1, 2));                    // below
-            bars.add(bar(d.plusMinutes(3), 1000, 1000, 1000, 1000, 3, 2));     // cross -> entry @1000
-            bars.add(bar(d.plusMinutes(6), 1000, 1020, 999, 1010, 3, 2));      // high 1020 hits TP 1010
+            bars.add(bar(d, 1000, 1000, 1000, 1000, 1, 2));                    // 아래
+            bars.add(bar(d.plusMinutes(3), 1000, 1000, 1000, 1000, 3, 2));     // 돌파 -> 1000에 진입
+            bars.add(bar(d.plusMinutes(6), 1000, 1020, 999, 1010, 3, 2));      // 고가 1020이 익절 1010에 닿음
         }
         return new BarSeries(bars);
     }
@@ -62,13 +62,13 @@ class CapitalSizingTest {
 
         assertEquals(2, r.summary().totalTrades());
         TradeRecord t = r.trades().get(0);
-        // 1,000,000 / 1,000 = 1,000 shares exactly.
+        // 1,000,000 / 1,000 = 정확히 1,000주.
         assertEquals(1000L, t.quantity());
-        // buy 1,000,000 + sell 1,010,000 -> fee 0.015% of each leg = 150 + 151.5
+        // 매수 1,000,000 + 매도 1,010,000 -> 각 구간 0.015% 수수료 = 150 + 151.5
         assertEquals(301.5, t.feeAmount(), 1e-6);
         assertEquals(10_000 - 301.5, t.profitAmount(), 1e-6);
 
-        // Fixed mode: the second trade is sized off the same amount, so both are identical.
+        // 고정 모드: 두 번째 거래도 같은 금액으로 크기를 잡으므로 둘이 동일합니다.
         assertEquals(t.quantity(), r.trades().get(1).quantity());
         assertEquals(t.profitAmount(), r.trades().get(1).profitAmount(), 1e-6);
 
@@ -89,14 +89,14 @@ class CapitalSizingTest {
         s.getCapital().setAmount(1_000_000);
         s.getCapital().setMode(CapitalMode.COMPOUND);
 
-        // Commission-free so the reinvestment effect is isolated.
+        // 재투자 효과만 떼어 보려고 수수료를 0으로 둡니다.
         BacktestResult r = engine.run(s, twoWinningTrades(), FeeSchedule.free());
 
         TradeRecord first = r.trades().get(0);
         TradeRecord second = r.trades().get(1);
         assertEquals(1000L, first.quantity());
         assertEquals(10_000, first.profitAmount(), 1e-6);
-        // Balance is now 1,010,000 -> floor(1,010,000 / 1,000) = 1,010 shares.
+        // 잔고가 1,010,000이 되었으므로 floor(1,010,000 / 1,000) = 1,010주.
         assertEquals(1010L, second.quantity());
         assertEquals(10_100, second.profitAmount(), 1e-6);
 
@@ -110,7 +110,7 @@ class CapitalSizingTest {
     @Test
     void amountBelowOneSharePriceBuysNothingAndIsCounted() {
         StrategySpec s = tpStrategy();
-        s.getCapital().setAmount(500); // one share costs 1,000
+        s.getCapital().setAmount(500); // 1주 값이 1,000
         s.getCapital().setMode(CapitalMode.FIXED);
 
         BacktestResult r = engine.run(s, twoWinningTrades());
@@ -119,13 +119,13 @@ class CapitalSizingTest {
         assertTrue(r.trades().stream().allMatch(t -> t.quantity() == 0L));
         assertEquals(0.0, r.money().totalProfitAmount(), 1e-9);
         assertEquals(2, r.money().unaffordableTrades());
-        // Price-based metrics are unaffected by sizing.
+        // 가격 기준 지표는 포지션 크기에 영향받지 않습니다.
         assertEquals(1.0, r.trades().get(0).returnPct(), 1e-9);
     }
 
     @Test
     void defaultsApplyWhenTheSpecCarriesNoCapitalBlock() throws Exception {
-        // A spec_json written before the capital block existed: the key is simply absent.
+        // capital 블록이 생기기 전에 쓰인 spec_json: 키가 아예 없습니다.
         ObjectMapper mapper = new ObjectMapper();
         ObjectNode json = mapper.valueToTree(tpStrategy());
         json.remove("capital");
@@ -138,7 +138,7 @@ class CapitalSizingTest {
         assertTrue(r.trades().get(0).quantity() > 0);
     }
 
-    /** Some stored rows carry an explicit null rather than omitting the key; same outcome. */
+    /** 어떤 저장 행은 키를 빼는 대신 명시적 null을 담고 있습니다. 결과는 같아야 합니다. */
     @Test
     void anExplicitNullCapitalBlockAlsoFallsBackToTheDefaults() throws Exception {
         ObjectMapper mapper = new ObjectMapper();

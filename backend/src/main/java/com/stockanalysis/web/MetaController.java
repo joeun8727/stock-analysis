@@ -15,7 +15,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
-/** Enumerations the rule-builder UI needs to populate dropdowns. */
+/** 규칙 빌더 UI가 드롭다운을 채우는 데 필요한 열거형들. */
 @RestController
 @RequestMapping("/api/meta")
 public class MetaController {

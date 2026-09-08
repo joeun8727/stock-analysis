@@ -17,12 +17,12 @@ const KIND_LABEL: Record<string, string> = {
   SINGLE: "단일",
 };
 
-/** 10,000,000원 traded at r% per side costs this much for a round trip (both legs). */
+/** 편도 r%로 10,000,000원을 매매하면 왕복(매수·매도 양쪽)에 이만큼 듭니다. */
 function roundTripCost(pct: number, notional = 10_000_000): number {
   return notional * (pct / 100) * 2;
 }
 
-/** One symbol's rate: commits on Enter or blur, so there's no save button per row. */
+/** 종목 하나의 요율: Enter나 포커스 해제 시 커밋되므로 줄마다 저장 버튼이 없습니다. */
 function FeeCell({
   dataset,
   onSave,

@@ -6,6 +6,6 @@ import java.util.List;
 
 public interface BacktestRunRepository extends JpaRepository<BacktestRun, Long> {
 
-    /** Every stored run, newest first — the history screen is a view of the table, uncapped. */
+    /** 저장된 모든 실행. 최신순 — 이력 화면은 테이블을 그대로 보는 뷰이고 개수 제한이 없습니다. */
     List<BacktestRun> findAllByOrderByCreatedAtDesc();
 }

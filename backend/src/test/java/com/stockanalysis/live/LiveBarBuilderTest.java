@@ -17,9 +17,9 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Live bars have to come out identical to the ones the backtest reads from the excel, or a verified
- * strategy quietly means something different on a real account. These pin the two properties that
- * were measured from the seed files rather than assumed.
+ * 실시간 봉은 백테스트가 엑셀에서 읽는 것과 똑같이 나와야 합니다. 아니면 검증받은 전략이
+ * 실계좌에서 조용히 다른 것을 뜻하게 됩니다. 여기서는 추측이 아니라 시드 파일에서 실측한 두
+ * 가지 성질을 못 박아 둡니다.
  */
 class LiveBarBuilderTest {
 
@@ -36,8 +36,8 @@ class LiveBarBuilderTest {
     }
 
     /**
-     * The 3-minute grid in the source files runs 08:45 / 08:48 / … / 15:45 — a bar is labelled by
-     * its start, and buckets are floored on minute-of-day.
+     * 원본 파일의 3분 격자는 08:45 / 08:48 / … / 15:45입니다 — 봉은 시작 시각으로 이름 붙고,
+     * 구간은 하루 중 분을 기준으로 내림합니다.
      */
     @Test
     void bucketsAreLabelledByTheirStartOnTheSameGridAsTheExcel() {
@@ -46,7 +46,7 @@ class LiveBarBuilderTest {
         assertEquals(at(8, 48), LiveBarBuilder.bucketStartOf(at(8, 48), 3));
         assertEquals(at(9, 0), LiveBarBuilder.bucketStartOf(at(9, 2), 3));
         assertEquals(at(15, 45), LiveBarBuilder.bucketStartOf(at(15, 47), 3));
-        // 1-minute data is the degenerate case: every minute is its own bucket.
+        // 1분 데이터는 자명한 경우입니다: 매 분이 각자 하나의 구간입니다.
         assertEquals(at(9, 7), LiveBarBuilder.bucketStartOf(at(9, 7), 1));
     }
 
@@ -72,8 +72,8 @@ class LiveBarBuilderTest {
     }
 
     /**
-     * MA5 in the excel is the mean of the labelled bar and the four before it — bars, not minutes.
-     * Verified against KOSPI200 3-minute data, where the 15:45 bar's ma5 matches exactly.
+     * 엑셀의 MA5는 라벨이 붙은 봉과 그 앞 네 개의 평균입니다 — 분이 아니라 봉입니다.
+     * KOSPI200 3분 데이터로 확인했고, 15:45 봉의 ma5가 정확히 일치합니다.
      */
     @Test
     void movingAverageIsOverNBarsIncludingTheCurrentOne() {
@@ -85,12 +85,12 @@ class LiveBarBuilderTest {
         }
         builder.warmUp(warm);
 
-        // Fifth bar closes at 50: MA5 = (10+20+30+40+50)/5 = 30.
+        // 다섯 번째 봉이 50에 마감: MA5 = (10+20+30+40+50)/5 = 30.
         builder.accept(at(9, 4), 50, 500.0);
         Bar forming = builder.formingBar().orElseThrow();
         assertEquals(30.0, forming.ma5(), 1e-9);
 
-        // MA10 has only 5 bars to work with, so it stays NaN rather than averaging what exists.
+        // MA10은 쓸 수 있는 봉이 5개뿐이라, 있는 것만 평균 내지 않고 NaN으로 남습니다.
         assertTrue(Double.isNaN(forming.ma10()));
     }
 
@@ -102,7 +102,7 @@ class LiveBarBuilderTest {
 
         assertTrue(Double.isNaN(bar.ma5()));
         assertTrue(Double.isNaN(bar.ma60()));
-        // A NaN comparison is false in the engine, so an unwarmed rule is simply inert.
+        // 엔진에서 NaN 비교는 false이므로, 워밍업이 안 된 규칙은 그냥 발동하지 않습니다.
         assertFalse(bar.ma5() > 0);
         assertFalse(bar.ma5() < 0);
 
@@ -126,7 +126,7 @@ class LiveBarBuilderTest {
         assertEquals(110, bar.high(), 1e-9);
         assertEquals(100, bar.low(), 1e-9);
         assertEquals(105, bar.close(), 1e-9);
-        // Bar volume is the difference of session-cumulative volume across the bucket.
+        // 봉 거래량은 구간 양끝의 세션 누적 거래량 차이입니다.
         assertEquals(80, bar.volume(), 1e-9);
         assertEquals(1, builder.completedBarCount());
     }

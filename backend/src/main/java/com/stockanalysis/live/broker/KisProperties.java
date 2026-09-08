@@ -4,15 +4,14 @@ import com.stockanalysis.domain.LiveMode;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
- * Korea Investment &amp; Securities connection settings, bound from {@code kis.*}.
+ * {@code kis.*}에서 바인딩되는 한국투자증권 접속 설정.
  *
- * <p>Credentials come from the environment only (see {@code .env.example}); nothing here is stored
- * in the database or committed. {@link #mode} is likewise an environment variable rather than an
- * API field, so moving from paper to a real account takes a deliberate restart.
+ * <p>자격증명은 환경변수에서만 옵니다({@code .env.example} 참고). 여기 있는 어떤 것도 DB에
+ * 저장되거나 커밋되지 않습니다. {@link #mode} 역시 API 필드가 아니라 환경변수라, 모의에서
+ * 실계좌로 옮기려면 의도적인 재기동이 필요합니다.
  *
- * <p>{@code quote*} overrides exist because the paper-trading server may not serve domestic futures
- * quotes. When that turns out to be the case, point quotes at the live app key while orders keep
- * going to the paper account.
+ * <p>{@code quote*} 덮어쓰기가 있는 이유는 모의투자 서버가 국내선물 시세를 주지 않을 수 있기
+ * 때문입니다. 실제로 그런 경우, 시세만 실전 앱키로 받고 주문은 계속 모의 계좌로 보냅니다.
  */
 @ConfigurationProperties(prefix = "kis")
 public class KisProperties {
@@ -25,34 +24,34 @@ public class KisProperties {
     private LiveMode mode = LiveMode.DRY_RUN;
     private String appKey = "";
     private String appSecret = "";
-    /** CANO — the 8-digit account number without the product code. */
+    /** CANO — 상품코드를 뺀 계좌번호 8자리. */
     private String accountNo = "";
-    /** ACNT_PRDT_CD — usually "01" for a domestic stock account. */
+    /** ACNT_PRDT_CD — 국내주식 계좌는 보통 "01". */
     private String accountProductCode = "01";
 
     private String restBase;
     private String wsBase;
 
-    /** Separate app key for quotes; blank means "use the trading credentials". */
+    /** 시세 전용 앱키. 비어 있으면 "매매용 자격증명을 그대로 쓴다"는 뜻입니다. */
     private String quoteAppKey = "";
     private String quoteAppSecret = "";
     private String quoteRestBase;
 
     /**
-     * Requests per second the broker allows. KIS documents 20/s on the live server and 2/s on
-     * paper; exceeding it gets requests rejected, so the client paces itself.
+     * 브로커가 허용하는 초당 요청 수. KIS 문서 기준 실전 20/초, 모의 2/초입니다. 넘기면 요청이
+     * 거절되므로 클라이언트가 스스로 속도를 조절합니다.
      */
     private int rateLimitPerSecond = 0;
 
-    /** How long a WebSocket may go silent before the feed falls back to REST polling. */
+    /** WebSocket이 이만큼 조용하면 피드가 REST 폴링으로 넘어갑니다. */
     private int wsStaleSeconds = 30;
 
     private final TrIds trIds = new TrIds();
 
     /**
-     * Transaction IDs, one per endpoint and account type. These are the part of the KIS API most
-     * likely to be out of date — the cash-order IDs have been renumbered before — so every one is
-     * overridable from configuration. Verify against the official docs before trading for real.
+     * 엔드포인트와 계좌 종류마다 하나씩인 거래 ID. KIS API에서 가장 낡기 쉬운 부분이고 —
+     * 현금주문 ID는 실제로 번호가 바뀐 적이 있습니다 — 그래서 전부 설정으로 덮어쓸 수 있게 했습니다.
+     * 실전 매매 전에 공식 문서와 대조하세요.
      */
     public static class TrIds {
         private String orderBuy = "TTTC0802U";
@@ -165,7 +164,7 @@ public class KisProperties {
         }
     }
 
-    /** True when the credentials needed to talk to KIS at all are present. */
+    /** KIS와 통신하는 데 최소한 필요한 자격증명이 갖춰졌는지. */
     public boolean hasCredentials() {
         return !appKey.isBlank() && !appSecret.isBlank();
     }
@@ -175,8 +174,8 @@ public class KisProperties {
     }
 
     /**
-     * Orders go to the paper server in {@link LiveMode#PAPER}. In {@link LiveMode#DRY_RUN} nothing
-     * is ordered, but quotes still need a server, and paper is the safer one to read from.
+     * {@link LiveMode#PAPER}에서는 주문이 모의투자 서버로 갑니다. {@link LiveMode#DRY_RUN}에서는
+     * 주문 자체가 없지만 시세는 어딘가에서 받아야 하고, 읽기용으로는 모의 쪽이 더 안전합니다.
      */
     public boolean usesPaperServer() {
         return mode != LiveMode.REAL;
@@ -196,7 +195,7 @@ public class KisProperties {
         return usesPaperServer() ? PAPER_WS : REAL_WS;
     }
 
-    /** True when quotes use their own credentials and server rather than the trading ones. */
+    /** 시세가 매매용이 아니라 자체 자격증명과 서버를 쓰는지. */
     public boolean hasSeparateQuoteCredentials() {
         return !quoteAppKey.isBlank() && !quoteAppSecret.isBlank();
     }
@@ -205,8 +204,8 @@ public class KisProperties {
         if (quoteRestBase != null && !quoteRestBase.isBlank()) {
             return quoteRestBase;
         }
-        // Separate quote credentials only make sense against the live quote server — that is the
-        // whole reason for splitting them.
+        // 시세용 자격증명을 따로 두는 건 실전 시세 서버를 상대로만 의미가 있습니다 — 애초에
+        // 그러려고 분리한 것입니다.
         return hasSeparateQuoteCredentials() ? REAL_REST : resolvedRestBase();
     }
 
@@ -217,7 +216,7 @@ public class KisProperties {
         return usesPaperServer() ? 2 : 20;
     }
 
-    /** The tr_id for a cash order on whichever account type is in use. */
+    /** 지금 쓰는 계좌 종류에 맞는 현금주문 tr_id. */
     public String orderTrId(boolean buy) {
         if (usesPaperServer()) {
             return buy ? trIds.getPaperOrderBuy() : trIds.getPaperOrderSell();

@@ -23,10 +23,10 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 /**
- * Generates strategy recommendations by invoking the local Claude Code CLI headlessly
- * ({@code claude -p <prompt> --output-format json}). Uses the user's existing Claude Code
- * session — no API key. Requires the backend to run in an environment where {@code claude}
- * is installed and authenticated (i.e. local dev, not the Docker image).
+ * 로컬 Claude Code CLI를 헤드리스로 호출해서 전략 추천을 만듭니다
+ * ({@code claude -p <prompt> --output-format json}). 사용자의 기존 Claude Code 세션을 쓰므로
+ * API 키가 필요 없습니다. 대신 {@code claude}가 설치·인증된 환경에서 백엔드가 돌아야 합니다
+ * (로컬 개발 환경이지 Docker 이미지가 아닙니다).
  */
 @Service
 public class ClaudeCliRecommendationService implements RecommendationService {
@@ -130,7 +130,7 @@ public class ClaudeCliRecommendationService implements RecommendationService {
             try {
                 process = pb.start();
             } catch (IOException e) {
-                lastIo = e; // binary not found at this path, try next
+                lastIo = e; // 이 경로에 바이너리가 없습니다. 다음 후보를 시도합니다
                 continue;
             }
             ExecutorService reader = Executors.newSingleThreadExecutor();
@@ -164,7 +164,7 @@ public class ClaudeCliRecommendationService implements RecommendationService {
                 + "백엔드를 실행하거나 CLAUDE_BIN 환경변수에 절대경로를 지정하세요. (" + lastIo + ")");
     }
 
-    /** The configured binary first, then common install locations, so PATH gaps don't break it. */
+    /** 설정된 바이너리를 먼저, 그다음 흔한 설치 위치를 봅니다 — PATH가 비어도 동작하도록. */
     private List<String> candidateBins() {
         List<String> bins = new ArrayList<>();
         bins.add(claudeBin);
@@ -177,7 +177,7 @@ public class ClaudeCliRecommendationService implements RecommendationService {
         return bins;
     }
 
-    /** The CLI wraps the answer in a JSON envelope; pull out the model's text. */
+    /** CLI가 답을 JSON 봉투에 싸서 주므로, 모델이 쓴 텍스트를 꺼냅니다. */
     private String extractResultText(String stdout) {
         try {
             JsonNode env = mapper.readTree(stdout);
@@ -188,12 +188,12 @@ public class ClaudeCliRecommendationService implements RecommendationService {
                 return env.get("result").asText();
             }
         } catch (IOException ignore) {
-            // not an envelope; fall through to raw text
+            // 봉투가 아닙니다. 아래로 내려가 원문 그대로 씁니다
         }
         return stdout;
     }
 
-    /** Extract the JSON array from the answer text (tolerates fences/prose) and map to specs. */
+    /** 답변 텍스트에서 JSON 배열을 꺼내(코드펜스·설명문이 섞여도 견딤) 스펙으로 매핑합니다. */
     private List<StrategySpec> parseSpecs(String text) {
         int start = text.indexOf('[');
         int end = text.lastIndexOf(']');

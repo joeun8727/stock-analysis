@@ -16,12 +16,11 @@ import java.time.LocalDate;
 import java.util.List;
 
 /**
- * Live trading API.
+ * 실투자 API.
  *
- * <p>Note what is missing: there is no endpoint that changes a trading rule, and none that switches
- * to a real account. Rules are edited on the strategy screen so that what trades is exactly what
- * was backtested, and the account mode comes from an environment variable so that going live takes
- * a restart rather than a click.
+ * <p>없는 것에 주목하세요: 매매 규칙을 바꾸는 엔드포인트가 없고, 실계좌로 전환하는 것도
+ * 없습니다. 규칙은 전략 화면에서 편집해야 매매되는 것이 백테스트한 것과 정확히 같고, 계좌
+ * 모드는 환경변수에서 와야 실전 전환이 클릭이 아니라 재기동을 요구합니다.
  */
 @RestController
 @RequestMapping("/api/live")
@@ -68,7 +67,7 @@ public class LiveController {
         return ConfigDto.from(configService.update(req));
     }
 
-    /** Strategies that could be traded, each with its verification evidence or the reason it can't. */
+    /** 매매 후보가 될 수 있는 전략들. 각각 검증 근거 또는 안 되는 이유를 함께 담습니다. */
     @GetMapping("/candidates")
     public List<VerificationGate.Candidate> candidates() {
         return gate.candidates(configService.get());
@@ -77,7 +76,7 @@ public class LiveController {
     public record ArmRequest(String date) {
     }
 
-    /** Switches trading on for one day. Refuses unless the strategy passes the verification gate. */
+    /** 하루 동안 매매를 켭니다. 전략이 검증 게이트를 통과하지 못하면 거부합니다. */
     @PostMapping("/arm")
     public ConfigDto arm(@RequestBody(required = false) ArmRequest req) {
         LocalDate date = (req == null || req.date() == null || req.date().isBlank())
@@ -104,8 +103,8 @@ public class LiveController {
     }
 
     /**
-     * Kill switch. Always stops new orders; {@code closePosition} additionally liquidates at market.
-     * Disarms as well, so a halt does not quietly re-arm on the next tick.
+     * 킬 스위치. 새 주문은 항상 막고, {@code closePosition}이면 시장가로 청산까지 합니다.
+     * 활성화도 함께 풀어서, 정지한 것이 다음 tick에 조용히 다시 켜지지 않게 합니다.
      */
     @PostMapping("/halt")
     public LiveQueryService.TodayView halt(@RequestBody(required = false) HaltRequest req) {
@@ -117,7 +116,7 @@ public class LiveController {
         return queryService.today();
     }
 
-    /** Connection and setup check. Reads only — never places an order. */
+    /** 연결과 설정 점검. 읽기만 합니다 — 주문은 절대 내지 않습니다. */
     @PostMapping("/check")
     public LiveQueryService.CheckResult check() {
         return queryService.check();

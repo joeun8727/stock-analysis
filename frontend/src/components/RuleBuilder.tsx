@@ -25,7 +25,7 @@ const OP_LABEL: Record<string, string> = {
   CROSS_BELOW: "하향돌파",
 };
 
-/** KRX intraday defaults: volatile open, quiet midday, closing hour. */
+/** KRX 장중 기본값: 변동성 큰 개장, 조용한 점심, 마감 시간대. */
 const BAND_PRESET: TimeBand[] = [
   { startTime: "09:00", endTime: "10:00", takeProfitPct: 2.0, stopLossPct: 1.5 },
   { startTime: "10:00", endTime: "14:00", takeProfitPct: 1.0, stopLossPct: 0.7 },
@@ -33,15 +33,15 @@ const BAND_PRESET: TimeBand[] = [
 ];
 
 function newBand(bands: TimeBand[]): TimeBand {
-  // Start where the last band ended, so consecutive bands are the easy path.
+  // 직전 밴드가 끝난 곳에서 시작해, 연속된 밴드를 만드는 게 쉬운 길이 되게 합니다.
   const last = bands[bands.length - 1];
   return { startTime: last?.endTime || "09:00", endTime: "15:20", takeProfitPct: null, stopLossPct: null };
 }
 
 /**
- * Take-profit / stop-loss as one table: the fixed first row is the ExitSpec base ("전체"), and each
- * extra row is a time band. Bands are matched against the bar being checked, so the levels move
- * while a position is held — the per-row summary spells that out because it surprises people.
+ * 익절 / 손절을 한 표로: 고정된 첫 줄이 ExitSpec의 기본값("전체")이고, 그 아래
+ * 한 줄이 시간대 밴드입니다. 밴드는 지금 확인하는 봉에 맞춰지므로 포지션을 들고 있는 동안
+ * 선이 움직입니다 — 사람들이 이 점에 놀라기 때문에 줄마다 요약으로 명시해 둡니다.
  */
 function ExitLevels({ exit, onChange }: { exit: ExitSpec; onChange: (e: ExitSpec) => void }) {
   const bands = exit.bands ?? [];
@@ -140,7 +140,7 @@ function ExitLevels({ exit, onChange }: { exit: ExitSpec; onChange: (e: ExitSpec
   );
 }
 
-/** Mirrors StrategyService.validateBands so the message shows without a round trip. */
+/** StrategyService.validateBands를 그대로 옮긴 것. 서버 왕복 없이 메시지를 보여주려고입니다. */
 function validateBands(bands: TimeBand[]): string | null {
   for (let i = 0; i < bands.length; i++) {
     const b = bands[i];
@@ -172,7 +172,7 @@ const CAPITAL_MODE_LABEL: Record<string, string> = {
 
 const AMOUNT_PRESETS = [1_000_000, 5_000_000, 10_000_000, 50_000_000];
 
-/** 12,340,000 -> "1,234만원" — the raw number field is hard to read at this many digits. */
+/** 12,340,000 -> "1,234만원" — 자릿수가 이만큼 되면 숫자 입력칸 그대로는 읽기 어렵습니다. */
 function krwWords(v: number): string {
   if (!Number.isFinite(v) || v <= 0) return "";
   const eok = Math.floor(v / 100_000_000);

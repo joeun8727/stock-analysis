@@ -26,7 +26,7 @@ public class EtfGroupController {
     public record CreateRequest(String name) {
     }
 
-    /** All groups with their leverage/inverse/futures slots and a readiness flag. */
+    /** 모든 그룹과 각각의 레버리지/인버스/선물 슬롯, 그리고 준비 완료 플래그. */
     @GetMapping
     public List<EtfGroupView> list() {
         return service.listAll();
@@ -42,7 +42,7 @@ public class EtfGroupController {
         return service.view(service.rename(id, req.name()).getId());
     }
 
-    /** Removes the group only; its datasets stay and become ungrouped. */
+    /** 그룹만 지웁니다. 소속 데이터셋은 남고 그룹 없음 상태가 됩니다. */
     @DeleteMapping("/{id}")
     public void delete(@PathVariable long id) {
         service.delete(id);

@@ -14,30 +14,29 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Rebuilds, from live quotes, the exact kind of {@link Bar} the backtest reads out of the excel —
- * so a saved strategy's indicator conditions mean the same thing on a real account.
+ * 실시간 시세로부터, 백테스트가 엑셀에서 읽는 것과 똑같은 {@link Bar}를 다시 만듭니다 —
+ * 그래야 저장된 전략의 지표 조건이 실계좌에서도 같은 것을 뜻합니다.
  *
- * <p>Two properties of the source data are reproduced here, both verified against the seed files,
- * and both silently wrong if guessed:
+ * <p>원본 데이터의 성질 두 가지를 여기서 재현합니다. 둘 다 시드 파일로 실측 확인했고,
+ * 둘 다 추측으로 정하면 조용히 틀립니다:
  *
  * <ul>
- *   <li><b>A bar's timestamp is its start</b>, and the bucket is {@code [t, t + interval)} aligned
- *       to minute-of-day. In the 3-minute futures file the closing-auction bars 15:36 / 15:39 /
- *       15:42 carry zero volume; if the label were the bar's end, the 15:36 bar would span 15:34
- *       (still in continuous trading) and could not be empty.</li>
- *   <li><b>MA<i>n</i> is an <i>n</i>-bar average, not an n-minute one.</b> MA5 on the 3-minute file
- *       matches the mean of the previous 5 bars' closes exactly. So the same spec means different
- *       things at different bar lengths, and live bars must be built at the same interval the
- *       strategy was backtested on.</li>
+ *   <li><b>봉의 타임스탬프는 봉의 시작 시각</b>이고, 구간은 하루 중 분에 정렬된
+ *       {@code [t, t + interval)}입니다. 3분봉 선물 파일에서 종가 단일가 구간의 15:36 / 15:39 /
+ *       15:42 봉은 거래량이 0인데, 라벨이 끝 시각이라면 15:36 봉이 (아직 연속거래 중인)
+ *       15:34를 포함하게 되어 0일 수 없습니다.</li>
+ *   <li><b>MA<i>n</i>은 <i>n</i>봉 평균이지 n분 평균이 아닙니다.</b> 3분봉 파일의 MA5는 직전
+ *       5봉 종가의 평균과 정확히 일치합니다. 따라서 같은 스펙이 봉 길이에 따라 다른 것을 뜻하며,
+ *       실시간 봉은 그 전략을 백테스트한 것과 같은 간격으로 조립해야 합니다.</li>
  * </ul>
  *
- * <p>Indicators that lack enough history stay {@link Double#NaN}. That is deliberate: the engine
- * treats any comparison involving NaN as false, so an unwarmed MA60 simply never fires instead of
- * firing on a made-up number.
+ * <p>이력이 모자란 지표는 {@link Double#NaN}으로 남습니다. 의도한 것입니다: 엔진은 NaN이 낀
+ * 비교를 전부 false로 보므로, 워밍업이 안 된 MA60은 지어낸 숫자로 발동하는 대신 그냥
+ * 발동하지 않습니다.
  */
 public class LiveBarBuilder {
 
-    /** Longest lookback any indicator needs (volMA120), plus room to spare. */
+    /** 어떤 지표든 필요로 하는 가장 긴 룩백(volMA120)에 여유를 더한 값. */
     private static final int MAX_HISTORY = 400;
 
     private final int intervalMinutes;
@@ -63,28 +62,27 @@ public class LiveBarBuilder {
     }
 
     /**
-     * Seeds history from the broker's 1-minute bars, aggregating them up to this builder's
-     * interval. Call with the previous session first, then today — volMA120 on 3-minute bars needs
-     * six hours of history, which is most of a trading day.
+     * 브로커의 1분봉을 이 빌더의 간격으로 합쳐 이력을 채웁니다. 전일부터 먼저 넣고 그다음 오늘을
+     * 넣으세요 — 3분봉의 volMA120은 6시간치 이력이 필요한데, 그건 거래일의 대부분입니다.
      *
-     * <p>Best-effort by design: a short warm-up leaves the long indicators NaN rather than failing.
+     * <p>설계상 최선 노력입니다: 워밍업이 짧으면 실패하는 대신 긴 지표를 NaN으로 둡니다.
      */
     public void warmUp(List<Bar> oneMinuteBars) {
         for (Bar aggregated : aggregate(oneMinuteBars, intervalMinutes)) {
-            // Indicators are recomputed as each bar lands, not left as they came in: the engine
-            // reads the *previous* bar for CROSS operators, so a history of NaN-indicator bars
-            // would silently disable every crossover rule for the first bars of the session.
+            // 지표는 봉이 들어올 때마다 다시 계산합니다. 받은 그대로 두지 않는 이유는, 엔진이
+            // CROSS 연산자에서 *직전* 봉을 읽기 때문입니다 — 지표가 NaN인 봉으로 이력을 채우면
+            // 세션 초반의 모든 돌파 규칙이 조용히 죽습니다.
             push(withIndicators(aggregated.ts(), aggregated.open(), aggregated.high(),
                     aggregated.low(), aggregated.close(), aggregated.volume()));
         }
     }
 
     /**
-     * Feeds one live quote in. Returns the bar that just closed, if this quote belongs to a new
-     * bucket — the caller evaluates signal/time/day-end exits on that completed bar, exactly as the
-     * backtest does. Returns empty while the current bar is still forming.
+     * 실시간 시세 하나를 넣습니다. 이 시세가 새 구간에 속하면, 방금 마감된 봉을 돌려줍니다 —
+     * 호출자는 그 완성된 봉으로 시그널/시간/장마감 청산을 평가합니다. 백테스트와 똑같습니다.
+     * 현재 봉이 아직 만들어지는 중이면 빈 값을 돌려줍니다.
      *
-     * @param cumulativeVolume session-to-date traded volume, or null when the feed doesn't report it
+     * @param cumulativeVolume 세션 누적 거래량. 피드가 주지 않으면 null
      */
     public java.util.Optional<Bar> accept(LocalDateTime ts, double price, Double cumulativeVolume) {
         LocalDateTime bucket = bucketStartOf(ts, intervalMinutes);
@@ -104,8 +102,8 @@ public class LiveBarBuilder {
             return java.util.Optional.empty();
         }
 
-        // A quote landed in a later bucket, so the previous bar is final. Seal it *before* taking
-        // this quote's cumulative volume, or the new bar's trades get counted in the old one.
+        // 시세가 뒤쪽 구간에 떨어졌으므로 직전 봉은 확정입니다. 이 시세의 누적 거래량을 반영하기
+        // **전에** 봉을 마감해야, 새 봉의 거래가 옛 봉에 섞이지 않습니다.
         Bar completed = sealCurrent();
         push(completed);
         if (cumulativeVolume != null) {
@@ -116,8 +114,8 @@ public class LiveBarBuilder {
     }
 
     /**
-     * The bar currently forming, with indicators computed as if it had closed now. Used for
-     * intrabar exit checks and for display; it is not pushed into history until it closes.
+     * 지금 만들어지는 중인 봉. 지표는 방금 마감한 것처럼 계산해서 담습니다. 장중 청산 판정과
+     * 화면 표시에 쓰며, 마감되기 전까지는 이력에 넣지 않습니다.
      */
     public java.util.Optional<Bar> formingBar() {
         if (bucketStart == null) {
@@ -126,7 +124,7 @@ public class LiveBarBuilder {
         return java.util.Optional.of(sealCurrent());
     }
 
-    /** Completed bars, oldest first. */
+    /** 완성된 봉들. 오래된 것부터. */
     public List<Bar> completedBars() {
         return new ArrayList<>(history);
     }
@@ -140,13 +138,13 @@ public class LiveBarBuilder {
     }
 
     /**
-     * Which indicators have enough history to hold a real number. The screen shows this so a user
-     * can see that, say, MA60 is not armed yet rather than wondering why a rule never fires.
+     * 어떤 지표가 실제 숫자를 담을 만큼 이력을 갖췄는지. 화면이 이걸 보여줘서, 사용자가 예컨대
+     * MA60이 아직 준비 안 됐다는 걸 알 수 있게 합니다 — 규칙이 왜 안 걸리는지 헤매지 않도록.
      */
     public Map<Indicator, Boolean> readiness() {
         Map<Indicator, Boolean> out = new EnumMap<>(Indicator.class);
-        // The forming bar counts: an average of n bars is the current one plus n-1 from history,
-        // which is how the excel's MA5 covers the labelled bar and the four before it.
+        // 만들어지는 중인 봉도 셉니다: n봉 평균은 현재 봉 하나에 이력 n-1개를 더한 것이고,
+        // 엑셀의 MA5가 라벨이 붙은 봉과 그 앞 네 개를 덮는 방식이 바로 이것입니다.
         int n = history.size() + (bucketStart == null ? 0 : 1);
         for (Indicator indicator : Indicator.values()) {
             int need = lookbackOf(indicator);
@@ -155,7 +153,7 @@ public class LiveBarBuilder {
         return out;
     }
 
-    /** How many bars an indicator needs before it stops being NaN. */
+    /** 어떤 지표가 NaN을 벗어나기까지 필요한 봉 개수. */
     public static int lookbackOf(Indicator indicator) {
         return switch (indicator) {
             case OPEN, HIGH, LOW, CLOSE, VOLUME -> 1;
@@ -167,7 +165,7 @@ public class LiveBarBuilder {
         };
     }
 
-    // ------------------------------------------------------------------ internals
+    // ------------------------------------------------------------------ 내부
 
     private void startBucket(LocalDateTime bucket, double price, Double cumulativeVolume) {
         bucketStart = bucket;
@@ -178,19 +176,19 @@ public class LiveBarBuilder {
         bucketStartCumulativeVolume = cumulativeVolume;
     }
 
-    /** Builds the current bucket into a Bar with indicators taken from completed history. */
+    /** 현재 구간을 Bar로 만듭니다. 지표는 완성된 이력에서 가져옵니다. */
     private Bar sealCurrent() {
         double volume = Double.NaN;
         if (bucketStartCumulativeVolume != null && latestCumulativeVolume != null) {
             double delta = latestCumulativeVolume - bucketStartCumulativeVolume;
-            volume = delta >= 0 ? delta : Double.NaN; // a reset (new session) makes the delta meaningless
+            volume = delta >= 0 ? delta : Double.NaN; // 리셋(새 세션)이면 증분이 의미가 없습니다
         }
         return withIndicators(bucketStart, open, high, low, close, volume);
     }
 
     /**
-     * Computes the moving averages for a bar that closes now. Averages include the bar itself, the
-     * same way the excel's MA5 covers the labelled bar plus the four before it.
+     * 지금 마감되는 봉의 이동평균을 계산합니다. 평균에는 그 봉 자신이 포함됩니다 — 엑셀의 MA5가
+     * 라벨이 붙은 봉에 그 앞 네 개를 더해 덮는 것과 같은 방식입니다.
      */
     private Bar withIndicators(LocalDateTime ts, double o, double h, double l, double c, double volume) {
         return new Bar(ts, o, h, l, c,
@@ -220,7 +218,7 @@ public class LiveBarBuilder {
         while (taken < n && it.hasNext()) {
             double v = it.next().volume();
             if (Double.isNaN(v)) {
-                return Double.NaN; // a gap in volume makes the average a lie
+                return Double.NaN; // 거래량에 구멍이 있으면 그 평균은 거짓말이 됩니다
             }
             sum += v;
             taken++;
@@ -236,8 +234,8 @@ public class LiveBarBuilder {
     }
 
     /**
-     * Start of the bucket a timestamp belongs to: minute-of-day floored to the interval. For
-     * 3-minute bars this reproduces the 08:45 / 08:48 / … / 15:45 grid in the source files.
+     * 타임스탬프가 속한 구간의 시작. 하루 중 분을 간격 단위로 내림합니다. 3분봉이면 원본 파일의
+     * 08:45 / 08:48 / … / 15:45 격자를 그대로 재현합니다.
      */
     public static LocalDateTime bucketStartOf(LocalDateTime ts, int intervalMinutes) {
         int minuteOfDay = ts.getHour() * 60 + ts.getMinute();
@@ -246,8 +244,8 @@ public class LiveBarBuilder {
     }
 
     /**
-     * Folds 1-minute bars into {@code intervalMinutes} bars. Indicators are left NaN here and
-     * recomputed as each aggregated bar is pushed, so warm-up and live bars are built the same way.
+     * 1분봉을 {@code intervalMinutes} 봉으로 접습니다. 여기서 지표는 NaN으로 두고, 합쳐진 봉이
+     * 하나씩 들어갈 때 다시 계산합니다 — 워밍업 봉과 실시간 봉이 같은 방식으로 만들어지도록.
      */
     public static List<Bar> aggregate(List<Bar> oneMinuteBars, int intervalMinutes) {
         List<Bar> out = new ArrayList<>();
@@ -296,7 +294,7 @@ public class LiveBarBuilder {
         return new Bar(ts, o, h, l, c, nan, nan, nan, nan, volume, nan, nan, nan, nan);
     }
 
-    /** Convenience for callers holding a date rather than a timestamp. */
+    /** 타임스탬프 대신 날짜를 들고 있는 호출자를 위한 편의 메서드. */
     public static LocalDateTime firstBucketOf(LocalDate date, LocalTime sessionStart, int intervalMinutes) {
         return bucketStartOf(LocalDateTime.of(date, sessionStart), intervalMinutes);
     }

@@ -9,8 +9,8 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 /**
- * Wires the broker for the configured mode. Which implementation is in play is decided once, here,
- * from an environment variable — nothing at runtime can promote a dry run into a real order.
+ * 설정된 모드에 맞는 브로커를 연결합니다. 어느 구현이 쓰일지는 여기서 환경변수로 딱 한 번
+ * 정해집니다 — 실행 중에 드라이런이 진짜 주문으로 승격될 수 있는 경로가 없습니다.
  */
 @Configuration
 @EnableConfigurationProperties(KisProperties.class)

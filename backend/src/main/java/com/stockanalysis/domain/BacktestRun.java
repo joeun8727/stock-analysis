@@ -14,7 +14,7 @@ import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDateTime;
 
-/** A single backtest execution (strategy × dataset) with its stored result summary. */
+/** 백테스트 실행 하나(전략 × 데이터셋)와 저장된 결과 요약. */
 @Entity
 @Table(name = "backtest_run")
 public class BacktestRun {

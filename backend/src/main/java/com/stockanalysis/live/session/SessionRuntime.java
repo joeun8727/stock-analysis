@@ -10,11 +10,11 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * The parts of a trading day that only make sense in memory: the strategy being run, the quotes
- * collected so far, and the bar series being assembled.
+ * 거래일 중 메모리에서만 의미가 있는 것들: 지금 돌리는 전략, 지금까지 모은 시세, 조립 중인
+ * 봉 시리즈.
  *
- * <p>Everything that must survive a restart is in {@code live_session} and its child tables — this
- * is rebuilt from those on startup. Nothing here is the source of truth.
+ * <p>재기동을 견뎌야 하는 것은 전부 {@code live_session}과 그 하위 테이블에 있습니다 — 이
+ * 객체는 기동 시 거기서 재구성됩니다. 여기 있는 어떤 것도 원본이 아닙니다.
  */
 class SessionRuntime {
 
@@ -120,7 +120,7 @@ class SessionRuntime {
         this.barsHeld = barsHeld;
     }
 
-    /** Rate-limits polling to the configured interval without needing its own scheduler. */
+    /** 별도 스케줄러 없이 폴링을 설정된 주기로 제한합니다. */
     boolean shouldPoll(LocalDateTime now, int intervalSeconds) {
         if (lastPollAt == null || !now.isBefore(lastPollAt.plusSeconds(intervalSeconds))) {
             lastPollAt = now;

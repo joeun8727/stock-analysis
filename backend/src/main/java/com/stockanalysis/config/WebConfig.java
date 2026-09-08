@@ -4,7 +4,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
-/** Allows the Next.js dev server (localhost:3000) to call the API. */
+/** Next.js 개발 서버(localhost:3000)가 API를 호출할 수 있게 허용합니다. */
 @Configuration
 public class WebConfig implements WebMvcConfigurer {
 

@@ -17,7 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** The auto-diagnosis: does it point at the right cause for a known-broken strategy? */
+/** 자동 진단: 고장 난 것이 확실한 전략에 대해 원인을 제대로 짚는가? */
 class FailureDiagnosisTest {
 
     private final BacktestEngine engine = new BacktestEngine();
@@ -39,13 +39,13 @@ class FailureDiagnosisTest {
         return r.diagnosis().findings().stream().anyMatch(f -> f.title().contains(needle));
     }
 
-    /** Appends losing days (each exits on stop-loss) entering at {@code hour}. */
+    /** {@code hour}시에 진입해 손절로 끝나는 손실 거래일들을 덧붙입니다. */
     private static void appendLosingDays(List<Bar> bars, int startDayOffset, int count, int hour) {
         for (int i = 0; i < count; i++) {
             LocalDateTime d = LocalDateTime.of(2026, 1, 5, hour, 0).plusDays(startDayOffset + i);
-            bars.add(bar(d, 1000, 1000, 1000, 1000, 1, 2));                 // below
-            bars.add(bar(d.plusMinutes(3), 1000, 1000, 1000, 1000, 3, 2));  // cross -> entry @1000
-            bars.add(bar(d.plusMinutes(6), 1000, 1001, 980, 985, 3, 2));    // low 980 hits stop 990
+            bars.add(bar(d, 1000, 1000, 1000, 1000, 1, 2));                 // 아래
+            bars.add(bar(d.plusMinutes(3), 1000, 1000, 1000, 1000, 3, 2));  // 돌파 -> 1000에 진입
+            bars.add(bar(d.plusMinutes(6), 1000, 1001, 980, 985, 3, 2));    // 저가 980이 손절 990에 닿음
         }
     }
 
@@ -55,7 +55,7 @@ class FailureDiagnosisTest {
         return new BarSeries(bars);
     }
 
-    /** 15 losses in the 9 o'clock hour plus 3 at 13:00, so one hour clearly dominates the other. */
+    /** 9시대에 손실 15건, 13시에 3건 — 한 시간대가 다른 쪽을 확실히 압도합니다. */
     private static BarSeries losingDaysAcrossTwoHours() {
         List<Bar> bars = new ArrayList<>();
         appendLosingDays(bars, 0, 15, 9);
@@ -77,7 +77,7 @@ class FailureDiagnosisTest {
         assertEquals(BacktestResult.Severity.HIGH, r.diagnosis().findings().get(0).severity());
     }
 
-    /** With only one entry hour there is nothing to compare against, so no hour is blamed. */
+    /** 진입 시간대가 하나뿐이면 견줄 대상이 없으므로 어느 시간대도 탓하지 않습니다. */
     @Test
     void doesNotBlameAnHourWhenEveryTradeSharesTheSameHour() {
         StrategySpec s = crossStrategy();
@@ -100,7 +100,7 @@ class FailureDiagnosisTest {
         assertEquals(18, r.summary().losses());
         assertTrue(hasTitleContaining(r, "손절"), "손절 원인 지목 없음: " + titles(r));
         assertTrue(hasTitleContaining(r, "9시대"), "시간대 지목 없음: " + titles(r));
-        // The stop-loss finding should carry the configured percentage into its suggestion.
+        // 손절 관련 진단은 설정된 퍼센트를 제안 문구에 그대로 담아야 합니다.
         String fix = r.diagnosis().findings().stream()
                 .filter(f -> f.title().contains("손절")).findFirst().orElseThrow().suggestion();
         assertTrue(fix.contains("1.00%"), fix);
@@ -118,14 +118,14 @@ class FailureDiagnosisTest {
             LocalDateTime d = LocalDateTime.of(2026, 2, 2, 10, 0).plusDays(i);
             bars.add(bar(d, 1000, 1000, 1000, 1000, 1, 2));
             bars.add(bar(d.plusMinutes(3), 1000, 1000, 1000, 1000, 3, 2));
-            bars.add(bar(d.plusMinutes(6), 1000, 1010, 999, 1005, 3, 2));   // hits TP 1002
+            bars.add(bar(d.plusMinutes(6), 1000, 1010, 999, 1005, 3, 2));   // 익절 1002에 닿음
         }
 
-        // 0.5% per side is absurd on purpose: a 1% round trip against a 0.2% target.
+        // 편도 0.5%는 일부러 말도 안 되게 잡은 값입니다: 0.2% 목표에 왕복 1% 비용.
         BacktestResult r = engine.run(s, new BarSeries(bars), FeeSchedule.flat(0.5));
 
-        assertEquals(12, r.summary().wins()); // every trade wins on price
-        assertTrue(r.money().totalProfitAmount() < 0); // but loses money after commission
+        assertEquals(12, r.summary().wins()); // 가격 기준으로는 전부 이김
+        assertTrue(r.money().totalProfitAmount() < 0); // 하지만 수수료를 빼면 손실
         assertTrue(hasTitleContaining(r, "수수료"), titles(r));
         assertEquals(BacktestResult.Severity.HIGH, r.diagnosis().findings().get(0).severity());
     }
@@ -143,7 +143,7 @@ class FailureDiagnosisTest {
         assertTrue(h.contains("승률 0.00%"), h);
         assertTrue(h.contains("가장 큰 문제는"), h);
         assertFalse(r.diagnosis().findings().isEmpty());
-        // Worst-first ordering.
+        // 최악부터 정렬됩니다.
         assertEquals(BacktestResult.Severity.HIGH, r.diagnosis().findings().get(0).severity());
     }
 
@@ -170,7 +170,7 @@ class FailureDiagnosisTest {
                 .noneMatch(f -> f.severity() == BacktestResult.Severity.HIGH), titles(r));
     }
 
-    /** 로 after a vowel or final ㄹ, 으로 otherwise — the exit-reason labels hit both branches. */
+    /** 모음이나 받침 ㄹ 뒤에는 '로', 그 밖에는 '으로' — 청산 사유 라벨이 두 갈래를 모두 씁니다. */
     @Test
     void exitReasonReadsWithTheCorrectKoreanParticle() {
         StrategySpec s = crossStrategy();

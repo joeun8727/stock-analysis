@@ -6,9 +6,9 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Persisted form of a backtest result (stored in {@code backtest_run.summary_json}).
- * All timestamps are ISO strings and enum keys are strings so Hibernate's Jackson JSON
- * mapper (which lacks the Java-time module) can serialize it without extra config.
+ * 백테스트 결과의 저장 형태({@code backtest_run.summary_json}에 들어갑니다).
+ * 모든 타임스탬프는 ISO 문자열이고 enum 키도 문자열입니다 — Hibernate의 Jackson JSON 매퍼가
+ * (Java time 모듈이 없어서) 추가 설정 없이 직렬화할 수 있게 하려고입니다.
  */
 public record StoredResult(
         BacktestResult.Summary summary,

@@ -17,22 +17,22 @@ import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Streams executed trade prices for subscribed tickers over the KIS real-time WebSocket.
+ * 구독한 종목의 체결가를 KIS 실시간 WebSocket으로 흘려받습니다.
  *
- * <p>This exists purely for reaction speed: a stop-loss checked every few seconds by polling exits
- * several seconds late, and on a leveraged ETF that gap is money. Correctness never depends on it —
- * {@link LivePriceFeed} falls back to REST whenever this goes quiet, so a dropped socket degrades
- * the fill price, not the decision.
+ * <p>순전히 반응 속도를 위한 것입니다: 몇 초마다 폴링해서 확인하는 손절은 몇 초 늦게 나가고,
+ * 레버리지 ETF에서 그 간격은 곧 돈입니다. 정확성이 여기에 의존하지는 않습니다 —
+ * {@link LivePriceFeed}가 이쪽이 조용해지면 REST로 넘어가므로, 소켓이 끊기면 체결가가 나빠질
+ * 뿐 판단이 달라지지는 않습니다.
  *
- * <p>Frames are the broker's own format, not JSON: {@code 0|H0STCNT0|001|005930^093045^71900^...}
- * where field 0 is the ticker, 1 the HHmmss trade time and 2 the price. JSON frames are control
- * messages — subscription acks and the PINGPONG keepalive, which must be echoed back verbatim.
+ * <p>프레임은 JSON이 아니라 브로커 자체 형식입니다: {@code 0|H0STCNT0|001|005930^093045^71900^...}
+ * 이고 필드 0이 종목코드, 1이 HHmmss 체결시각, 2가 가격입니다. JSON 프레임은 제어 메시지 —
+ * 구독 응답과 PINGPONG 킵얼라이브이고, 후자는 받은 그대로 되돌려줘야 합니다.
  */
 public class KisWebSocketPriceFeed {
 
     private static final Logger log = LoggerFactory.getLogger(KisWebSocketPriceFeed.class);
 
-    /** Real-time domestic stock/ETF trade feed. */
+    /** 국내 주식/ETF 실시간 체결 피드. */
     private static final String TR_TRADE = "H0STCNT0";
 
     private static final Duration RECONNECT_BACKOFF = Duration.ofSeconds(60);
@@ -48,7 +48,7 @@ public class KisWebSocketPriceFeed {
     private volatile Instant lastConnectAttempt = Instant.EPOCH;
     private volatile boolean connecting;
 
-    /** A streamed price and when we received it. */
+    /** 흘러들어온 가격 하나와 우리가 받은 시각. */
     public record Tick(String ticker, double price, LocalDateTime ts, Instant receivedAt) {
     }
 
@@ -68,9 +68,9 @@ public class KisWebSocketPriceFeed {
     }
 
     /**
-     * Ensures we are connected and subscribed to {@code ticker}. Safe to call repeatedly — it is
-     * how the session re-subscribes after a reconnect. Failures are logged, never thrown: the REST
-     * path is always there.
+     * {@code ticker}에 연결·구독된 상태를 보장합니다. 반복 호출해도 안전합니다 — 재연결 후
+     * 세션이 다시 구독하는 방식이 바로 이것입니다. 실패는 로그만 남기고 절대 던지지 않습니다:
+     * REST 경로가 항상 있기 때문입니다.
      */
     public synchronized void watch(String ticker) {
         subscribed.put(ticker, Boolean.TRUE);
@@ -105,7 +105,7 @@ public class KisWebSocketPriceFeed {
             return true;
         }
         if (connecting || Instant.now().isBefore(lastConnectAttempt.plus(RECONNECT_BACKOFF))) {
-            return false; // don't hammer the broker; REST is covering us meanwhile
+            return false; // 브로커를 두드리지 않습니다. 그동안은 REST가 받쳐줍니다
         }
         lastConnectAttempt = Instant.now();
         connecting = true;
@@ -169,7 +169,7 @@ public class KisWebSocketPriceFeed {
         @Override
         public void onOpen(WebSocket webSocket) {
             webSocket.request(1);
-            // The socket is new, so anything we were watching needs subscribing again.
+            // 소켓이 새것이므로, 보고 있던 종목은 전부 다시 구독해야 합니다.
             resubscribeAll();
         }
 
@@ -213,7 +213,7 @@ public class KisWebSocketPriceFeed {
                 return;
             }
             if (!"0".equals(parts[0])) {
-                return; // encrypted payload: only order notifications use it, and we don't read those here
+                return; // 암호화 페이로드: 주문 통보만 쓰는데 여기서는 그걸 읽지 않습니다
             }
             for (String record : splitRecords(parts[3], Integer.parseInt(parts[2].trim()))) {
                 String[] f = record.split("\\^");
@@ -233,7 +233,7 @@ public class KisWebSocketPriceFeed {
                 JsonNode node = mapper.readTree(message);
                 String trId = node.path("header").path("tr_id").asText("");
                 if ("PINGPONG".equals(trId)) {
-                    // The server expects its own frame back, unchanged, or it drops us.
+                    // 서버는 자기 프레임을 그대로 돌려받기를 기대합니다. 아니면 연결을 끊습니다.
                     webSocket.sendText(message, true);
                     return;
                 }
@@ -246,7 +246,7 @@ public class KisWebSocketPriceFeed {
             }
         }
 
-        /** A frame can carry several records back to back, separated by the same '^' delimiter. */
+        /** 한 프레임에 레코드 여러 개가 같은 '^' 구분자로 이어져 올 수 있습니다. */
         private String[] splitRecords(String payload, int count) {
             if (count <= 1) {
                 return new String[]{payload};

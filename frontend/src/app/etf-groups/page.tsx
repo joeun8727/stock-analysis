@@ -13,7 +13,7 @@ const SLOTS: { key: SlotKey; label: string; hint: string }[] = [
   { key: "futures", label: "선물", hint: "장전 추세를 판단할 기준 선물" },
 ];
 
-/** Which datasets may fill a given slot — the engine matches on market + kind. */
+/** 어떤 데이터셋이 어느 슬롯을 채울 수 있는지 — 엔진은 market + kind로 맞춥니다. */
 function eligible(datasets: Dataset[], slot: SlotKey): Dataset[] {
   if (slot === "futures") return datasets.filter((d) => d.market === "FUTURES");
   const kind = slot === "leverage" ? "LEVERAGE" : "INVERSE";
@@ -21,9 +21,9 @@ function eligible(datasets: Dataset[], slot: SlotKey): Dataset[] {
 }
 
 /**
- * Bar lengths present in a group's filled slots. Mixing them is a real error: the pre-market
- * decision and any futures-referencing condition match the futures bar by exact timestamp, so a
- * 1-minute ETF against 3-minute futures silently finds nothing on two of every three bars.
+ * 그룹의 채워진 슬롯들에 들어 있는 봉 길이. 섞이면 진짜 오류입니다: 장전 판단과 선물을
+ * 참조하는 모든 조건이 선물 봉을 타임스탬프 완전 일치로 찾기 때문에, 3분봉 선물에 1분봉 ETF를
+ * 물리면 세 봉 중 두 봉에서 조용히 아무것도 못 찾습니다.
  */
 function slotIntervals(group: EtfGroup, datasets: Dataset[]): number[] {
   return SLOTS
@@ -97,8 +97,8 @@ export default function EtfGroupsPage() {
   };
 
   /**
-   * Sets a slot to `datasetId` (or clears it when null). A slot holds one dataset, so replacing
-   * means unlinking the current occupant first — otherwise the server rejects the duplicate slot.
+   * 슬롯을 `datasetId`로 지정합니다(null이면 비웁니다). 슬롯 하나에 데이터셋 하나이므로,
+   * 교체하려면 지금 들어 있는 것을 먼저 떼어내야 합니다 — 아니면 서버가 중복 슬롯이라고 거부합니다.
    */
   const setSlot = (g: EtfGroup, slot: SlotKey, datasetId: number | null) => {
     const currentId = (g[slot] as EtfSlot)?.datasetId ?? null;

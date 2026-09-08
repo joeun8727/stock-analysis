@@ -24,7 +24,7 @@ async function handle<T>(res: Response): Promise<T> {
       const body = await res.json();
       if (body?.error) msg = body.error;
     } catch {
-      /* ignore */
+      /* 무시 */
     }
     throw new Error(msg);
   }
@@ -72,7 +72,7 @@ export const api = {
   async deleteDataset(id: number): Promise<void> {
     return handle(await fetch(`${BASE}/api/datasets/${id}`, { method: "DELETE" }));
   },
-  /** Moves a dataset into an ETF group; pass null to unlink it. */
+  /** 데이터셋을 ETF 그룹으로 옮깁니다. null을 주면 연결을 끊습니다. */
   async setDatasetGroup(id: number, etfGroupId: number | null): Promise<Dataset> {
     return handle(
       await fetch(`${BASE}/api/datasets/${id}/group`, {
@@ -131,7 +131,7 @@ export const api = {
       }),
     );
   },
-  /** Per-symbol commission, in percent per side. */
+  /** 종목별 편도 수수료율(%). */
   async setDatasetFee(id: number, feeRatePct: number): Promise<Dataset> {
     return handle(
       await fetch(`${BASE}/api/datasets/${id}/fee`, {
@@ -158,7 +158,7 @@ export const api = {
     );
   },
 
-  /** Exchange code used for live orders. Pass null to clear it. */
+  /** 실주문에 쓰는 종목코드. null을 주면 비웁니다. */
   async setDatasetTicker(id: number, ticker: string | null): Promise<Dataset> {
     return handle(
       await fetch(`${BASE}/api/datasets/${id}/ticker`, {
@@ -184,7 +184,7 @@ export const api = {
       }),
     );
   },
-  /** Strategies eligible for live trading, each with its verification evidence. */
+  /** 실투자 대상이 될 수 있는 전략들. 각각 검증 근거와 함께. */
   async liveCandidates(): Promise<LiveCandidate[]> {
     return handle(await fetch(`${BASE}/api/live/candidates`, { cache: "no-store" }));
   },
@@ -194,7 +194,7 @@ export const api = {
   async liveSessions(): Promise<LiveSessionItem[]> {
     return handle(await fetch(`${BASE}/api/live/sessions`, { cache: "no-store" }));
   },
-  /** Turns trading on for one day. Rejected unless the strategy passed the verification gate. */
+  /** 하루 동안 매매를 켭니다. 전략이 검증 게이트를 통과하지 못하면 거부됩니다. */
   async liveArm(date?: string): Promise<LiveConfigDto> {
     return handle(
       await fetch(`${BASE}/api/live/arm`, {
@@ -216,7 +216,7 @@ export const api = {
       }),
     );
   },
-  /** Connection and setup check. Never places an order. */
+  /** 연결과 설정 점검. 주문은 절대 내지 않습니다. */
   async liveCheck(): Promise<LiveCheckResult> {
     return handle(await fetch(`${BASE}/api/live/check`, { method: "POST" }));
   },

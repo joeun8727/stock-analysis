@@ -10,7 +10,7 @@ import jakarta.persistence.Table;
 
 import java.time.LocalDateTime;
 
-/** A named ETF group that pairs one leverage, one inverse, and one futures dataset. */
+/** 레버리지 하나, 인버스 하나, 선물 하나를 묶는 이름 있는 ETF 그룹. */
 @Entity
 @Table(name = "etf_group")
 public class EtfGroup {

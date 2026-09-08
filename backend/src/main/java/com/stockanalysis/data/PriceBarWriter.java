@@ -9,18 +9,18 @@ import java.sql.SQLException;
 import java.sql.Types;
 import java.util.List;
 
-/** Batch-inserts parsed bars into {@code price_bar}, in chunks. */
+/** 파싱한 봉을 {@code price_bar}에 청크 단위로 배치 insert합니다. */
 @Component
 public class PriceBarWriter {
 
     /**
-     * Rows per {@code executeBatch}. This must stay bounded: the JDBC url sets
-     * {@code rewriteBatchedStatements=true}, so Connector/J folds a whole batch into one
-     * multi-values INSERT and holds every bound parameter of it in memory while building the
-     * packet. Handing it the full series worked at 3-minute sizes (~150k rows) and blew the heap
-     * at 1-minute sizes (~450k rows) — {@code OutOfMemoryError} inside
-     * {@code executeBatchWithMultiValuesClause}. Chunking keeps the peak flat regardless of file
-     * size while keeping the rewrite benefit, since each chunk is still one round trip.
+     * {@code executeBatch} 한 번에 넣는 행 수. 반드시 제한이 있어야 합니다: JDBC url이
+     * {@code rewriteBatchedStatements=true}라서 Connector/J가 배치 하나를 multi-values INSERT
+     * 하나로 접고, 패킷을 만드는 동안 바인딩 값을 전부 메모리에 들고 있습니다. 시리즈 전체를
+     * 넘기는 방식은 3분봉 크기(약 15만 행)에서는 동작했지만 1분봉 크기(약 45만 행)에서 힙이
+     * 터졌습니다 — {@code executeBatchWithMultiValuesClause} 안에서 {@code OutOfMemoryError}.
+     * 청킹하면 파일 크기와 무관하게 최대 사용량이 평평해지고, 청크 하나가 여전히 왕복 한 번이라
+     * rewrite의 이득도 그대로 남습니다.
      */
     private static final int CHUNK_SIZE = 2_000;
 
@@ -40,8 +40,8 @@ public class PriceBarWriter {
     public void insertBars(long datasetId, List<Bar> bars) {
         jdbc.batchUpdate(INSERT, bars, CHUNK_SIZE, (ps, b) -> {
             ps.setLong(1, datasetId);
-            // Bind LocalDateTime directly so Connector/J stores the wall-clock value
-            // as-is (no server-timezone conversion), matching how JPA maps DATETIME.
+            // LocalDateTime을 직접 바인딩해서 Connector/J가 벽시계 값을 그대로 저장하게 합니다
+            // (서버 타임존 변환 없음). JPA가 DATETIME을 매핑하는 방식과 맞춥니다.
             ps.setObject(2, b.ts());
             ps.setDouble(3, b.open());
             ps.setDouble(4, b.high());

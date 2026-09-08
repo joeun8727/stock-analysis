@@ -19,13 +19,12 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Parses the 15-column 3-minute-bar excel files using a SAX-based streaming reader so 14 MB /
- * 160k-row workbooks parse with low memory. Columns are bound positionally (the moving-average
- * headers reuse bare integers, so names are unreliable):
+ * 15열 3분봉 엑셀 파일을 SAX 기반 스트리밍 리더로 파싱해, 14 MB / 16만 행 워크북을 저메모리로
+ * 읽습니다. 열은 위치로 바인딩합니다(이동평균 헤더가 맨숫자를 재사용해서 이름을 믿을 수 없습니다):
  *
  * <pre>
  * 0 일자(date) 1 시간(time) 2 open 3 high 4 low 5 close
- * 6 MA5 7 MA10 8 MA20 9 MA60 10 volume 11 volMA5 12 volMA20 13 volMA60 14 volMA120
+ * 6 MA5 7 MA10 8 MA20 9 MA60 10 거래량 11 volMA5 12 volMA20 13 volMA60 14 volMA120
  * </pre>
  */
 public class ExcelParser {
@@ -54,7 +53,7 @@ public class ExcelParser {
                 LocalDate date = dateAt(row, 0);
                 LocalTime time = timeAt(row, 1);
                 if (date == null) {
-                    continue; // skip blank/incomplete rows
+                    continue; // 비어 있거나 불완전한 행은 건너뜁니다
                 }
                 LocalDateTime ts = LocalDateTime.of(date, time == null ? LocalTime.MIDNIGHT : time);
                 bars.add(new Bar(
@@ -86,7 +85,7 @@ public class ExcelParser {
                 return s.isEmpty() ? Double.NaN : Double.parseDouble(s);
             }
         } catch (RuntimeException ignored) {
-            // fall through
+            // 아래로 흘려보냅니다
         }
         return Double.NaN;
     }

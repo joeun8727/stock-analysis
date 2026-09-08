@@ -23,14 +23,14 @@ const SEVERITY_LABEL: Record<string, string> = { HIGH: "심각", MEDIUM: "주의
 
 const INSTRUMENT_LABEL: Record<string, string> = { SINGLE: "", LEVERAGE: "레버리지 ", INVERSE: "인버스 " };
 
-/** "0.015%" for a single symbol, "레버리지 0.01% / 인버스 0.1%" when the sides differ. */
+/** 단일 종목이면 "0.015%", 양쪽 요율이 다르면 "레버리지 0.01% / 인버스 0.1%". */
 function feeText(rates: Record<string, number> | undefined): string {
   const entries = Object.entries(rates ?? {});
   if (entries.length === 0) return "-";
   return entries.map(([k, v]) => `${INSTRUMENT_LABEL[k] ?? `${k} `}${v}%`).join(" / ");
 }
 
-/** Won, rounded to the nearest won and signed so gains and losses read at a glance. */
+/** 원화. 원 단위로 반올림하고 부호를 붙여 이익과 손실이 한눈에 읽히게 합니다. */
 const won = (n: number) => `${n < 0 ? "-" : ""}${Math.abs(Math.round(n)).toLocaleString()}원`;
 const wonSigned = (n: number) => `${n > 0 ? "+" : n < 0 ? "-" : ""}${Math.abs(Math.round(n)).toLocaleString()}원`;
 
@@ -64,7 +64,7 @@ export default function BacktestPage() {
     try {
       setHistory(await api.listBacktests());
     } catch {
-      /* ignore */
+      /* 무시 */
     }
   }, []);
 
@@ -92,8 +92,8 @@ export default function BacktestPage() {
     selectedStrategy?.spec.targetType === "ETF" && !!selectedStrategy?.spec.premarket?.enabled;
 
   /**
-   * The dates the current selection actually covers. Pre-market mode reads three datasets, so the
-   * usable window is their overlap — the widest range where all three have bars.
+   * 지금 선택한 대상이 실제로 덮는 날짜. 장전 모드는 데이터셋 세 개를 읽으므로, 쓸 수 있는
+   * 구간은 그 교집합입니다 — 셋 모두에 봉이 있는 가장 넓은 범위.
    */
   const available = useMemo(() => {
     const pick = (id: number | null | undefined) => datasets.find((d) => d.id === id);
@@ -109,7 +109,7 @@ export default function BacktestPage() {
     return { from: froms.sort().at(-1)!, to: tos.sort()[0] };
   }, [datasets, etfGroups, usesPremarket, groupId, datasetId]);
 
-  // Follow the selection with the full span until the user types their own dates.
+  // 사용자가 직접 날짜를 입력하기 전까지는 선택을 따라 전체 구간으로 맞춥니다.
   const [dateTouched, setDateTouched] = useState(false);
   useEffect(() => {
     if (dateTouched || !available) return;
@@ -123,7 +123,7 @@ export default function BacktestPage() {
     setToDate(to);
   };
 
-  /** Last N months up to the data's end — the common "recent period only" check. */
+  /** 데이터 끝에서 거슬러 최근 N개월 — 흔히 쓰는 "최근 구간만" 확인. */
   const setRecentMonths = (months: number) => {
     if (!available) return;
     const end = new Date(`${available.to}T00:00:00`);
@@ -182,9 +182,9 @@ export default function BacktestPage() {
     return Math.max(1, ...Object.values(result.failureByHour).map((h) => h.lossCount));
   }, [result]);
 
-  // Cumulative won profit, one point per closed trade (net of commission, so the last
-  // point equals the 총 수익금 card). Trades come back ordered by entry and the engine
-  // holds one position at a time, so entry order is exit order.
+  // 누적 원화 수익금. 청산된 거래마다 한 점입니다(수수료를 뺀 값이라 마지막 점이
+  // '총 수익금' 카드와 같습니다). 거래는 진입 순으로 돌아오고, 엔진은
+  // 한 번에 하나의 포지션만 들고 있으므로 진입 순서가 곧 청산 순서입니다.
   const profitCurve = useMemo(() => {
     if (!result?.money || result.trades.length === 0) return [];
     let sum = 0;
@@ -196,11 +196,11 @@ export default function BacktestPage() {
   }, [result]);
 
   const s = result?.summary;
-  // Newest first for the table. result.trades stays chronological — profitCurve accumulates it in order.
+  // 표는 최신순. result.trades는 시간순 그대로 둡니다 — profitCurve가 그 순서로 누적하기 때문입니다.
   const trades = useMemo(() => (result ? result.trades.slice().reverse() : []), [result]);
   const hasInstrument = trades.some((t) => !!t.instrument);
-  // Runs recorded before the money feature have no summary, and their trade rows read back as 0 —
-  // key off the summary so those older runs don't show a column of zeroes.
+  // 금액 기능 이전에 기록된 실행은 summary가 없고 거래 행의 금액이 0으로 읽힙니다 —
+  // 그래서 거래 행이 아니라 summary를 기준으로 판단해 옛 실행에 0만 늘어선 컬럼이 뜨지 않게 합니다.
   const hasMoney = !!result?.money;
   const pageTrades = trades.slice(page * PER_PAGE, page * PER_PAGE + PER_PAGE);
   const totalPages = Math.ceil(trades.length / PER_PAGE);

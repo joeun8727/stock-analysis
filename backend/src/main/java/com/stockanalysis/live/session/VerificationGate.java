@@ -17,16 +17,15 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * The rule that a strategy must be backtested before it can trade money.
+ * 전략은 돈을 걸기 전에 백테스트를 거쳐야 한다는 규칙.
  *
- * <p>The workflow this project is built around is: save a logic, backtest it, then run it on a
- * paper account, then a real one. That order only means anything if it is enforced, so this is
- * checked in three places — when the live config is saved, when the day is armed, and again on
- * every session start — rather than being left to the user to remember.
+ * <p>이 프로젝트가 전제하는 흐름은 로직 저장 → 백테스트 → 모의투자 → 실계좌입니다. 그 순서는
+ * 강제될 때만 의미가 있어서, 사용자가 기억하기를 기대하는 대신 세 군데에서 확인합니다 —
+ * 실투자 설정을 저장할 때, 그날을 활성화할 때, 그리고 매 세션 시작 때.
  *
- * <p>The check that actually earns its keep is the spec hash. Everything else catches an omission;
- * the hash catches the dangerous case, where a verified strategy was edited afterwards and would
- * otherwise keep trading on a backtest that no longer describes it.
+ * <p>실제로 값을 하는 검사는 스펙 해시입니다. 나머지는 빠뜨린 것을 잡아내는 정도지만, 해시는
+ * 위험한 경우를 잡습니다: 검증받은 전략을 그 뒤에 고쳐놓고, 더는 그 전략을 설명하지 못하는
+ * 백테스트를 근거로 계속 매매하는 경우입니다.
  */
 @Service
 public class VerificationGate {
@@ -39,7 +38,7 @@ public class VerificationGate {
         this.runs = runs;
     }
 
-    /** Why a strategy may or may not be traded, and the evidence behind it. */
+    /** 이 전략을 매매해도 되는지, 그리고 그 판단의 근거. */
     public record Status(
             boolean verified,
             String reason,
@@ -60,8 +59,8 @@ public class VerificationGate {
     }
 
     /**
-     * Evaluates a strategy against a live config's thresholds. Never throws — the screen needs the
-     * reason to show the user, and the scheduler needs a decision, not an exception.
+     * 실투자 설정의 기준값에 비추어 전략을 평가합니다. 절대 예외를 던지지 않습니다 — 화면은
+     * 사용자에게 보여줄 사유가 필요하고, 스케줄러에는 예외가 아니라 판단이 필요합니다.
      */
     @Transactional(readOnly = true)
     public Status evaluate(Long strategyId, LiveConfig config) {
@@ -84,8 +83,8 @@ public class VerificationGate {
 
         Status evidence = describe(run);
 
-        // The core check: is the saved logic still the logic that was scored? A recorded hash is
-        // authoritative; without one we fall back to "was the run made after the last edit?".
+        // 핵심 검사: 저장된 로직이 아직 그때 점수를 받은 그 로직인가? 기록된 해시가 있으면 그것이
+        // 기준이고, 없으면 "마지막 수정 이후에 돌린 실행인가?"로 폴백합니다.
         String currentHash = SpecHasher.hash(strategy.getSpec());
         String verifiedHash = config == null ? null : config.getVerifiedSpecHash();
         if (verifiedHash != null && !verifiedHash.isBlank()) {
@@ -116,7 +115,7 @@ public class VerificationGate {
                 evidence.fromTs(), evidence.toTs(), evidence.spanDays());
     }
 
-    /** The most recent backtest for a strategy, or null when it has never been run. */
+    /** 전략의 가장 최근 백테스트. 한 번도 돌린 적 없으면 null. */
     @Transactional(readOnly = true)
     public BacktestRun latestRunFor(Long strategyId) {
         return runs.findAll().stream()
@@ -125,16 +124,16 @@ public class VerificationGate {
                 .orElse(null);
     }
 
-    /** Every strategy that could be traded, each with its verification status. */
+    /** 매매 후보가 될 수 있는 모든 전략과 각각의 검증 상태. */
     @Transactional(readOnly = true)
     public List<Candidate> candidates(LiveConfig config) {
         List<Candidate> out = new ArrayList<>();
         for (Strategy s : strategies.findAll()) {
             if (!s.getSpec().usesPremarket()) {
-                continue; // only the pre-market ETF mode is wired for live trading
+                continue; // 실투자에 연결된 건 ETF 장전 모드뿐입니다
             }
-            // Candidates are listed against their own evidence, not the configured strategy's
-            // hash — otherwise every strategy but the selected one would read as "changed".
+            // 후보는 설정된 전략의 해시가 아니라 각자의 근거로 판단합니다 — 아니면 선택된 것
+            // 하나를 빼고 전부 "변경됨"으로 읽힙니다.
             LiveConfig scoped = config;
             if (config != null && !s.getId().equals(config.getStrategyId())) {
                 scoped = thresholdsOnly(config);
@@ -147,7 +146,7 @@ public class VerificationGate {
     public record Candidate(Long strategyId, String name, String source, Status status) {
     }
 
-    /** A copy carrying only the minimums, so another strategy isn't judged by this one's hash. */
+    /** 최소 기준만 담은 복사본. 다른 전략이 이 전략의 해시로 판정되지 않게 하려고 씁니다. */
     private static LiveConfig thresholdsOnly(LiveConfig config) {
         LiveConfig copy = new LiveConfig();
         copy.setMinVerifiedTrades(config.getMinVerifiedTrades());
@@ -178,7 +177,7 @@ public class VerificationGate {
                 fromTs, toTs, span);
     }
 
-    /** Calendar days covered by the run's actual bars — the honest measure of "how long". */
+    /** 실행이 실제로 덮은 봉들의 달력 일수 — "얼마나 긴 기간인가"를 정직하게 재는 값. */
     private static Integer spanDays(String fromTs, String toTs) {
         if (fromTs == null || toTs == null) {
             return null;

@@ -12,23 +12,23 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 
 /**
- * Drives {@link LiveTradingService#tick} on a timer.
+ * {@link LiveTradingService#tick}을 타이머로 돌립니다.
  *
- * <p>All the intelligence is in the service, which takes the time as a parameter; this only decides
- * <em>when</em> to call it. That split is what lets a full trading day be tested without waiting for
- * one, and it keeps the scheduler small enough to be obviously correct.
+ * <p>판단은 전부 서비스에 있고 그쪽이 시각을 인자로 받습니다. 여기서는 <em>언제</em> 부를지만
+ * 정합니다. 이 분리 덕분에 하루를 실제로 기다리지 않고 하루치를 테스트할 수 있고, 스케줄러는
+ * 봐서 맞다는 게 명백할 만큼 작게 유지됩니다.
  *
- * <p>Ticks are confined to the trading window on weekdays. Outside it the service would return
- * immediately anyway, but not calling it at all means an idle machine makes no broker requests.
+ * <p>tick은 평일 장 시간대로 한정합니다. 밖에서는 어차피 서비스가 즉시 돌아오지만, 아예 부르지
+ * 않으면 놀고 있는 기계가 브로커에 요청을 하나도 보내지 않습니다.
  */
 @Component
 public class LiveScheduler {
 
     private static final Logger log = LoggerFactory.getLogger(LiveScheduler.class);
 
-    /** A little before the earliest pre-market window so the session is set up in time. */
+    /** 가장 이른 장전 구간보다 조금 앞. 세션 준비가 제때 끝나도록. */
     private static final LocalTime WINDOW_START = LocalTime.of(8, 30);
-    /** Past the closing auction, so a late fill is still collected. */
+    /** 종가 단일가 이후. 늦게 오는 체결도 받을 수 있도록. */
     private static final LocalTime WINDOW_END = LocalTime.of(15, 50);
 
     private final LiveTradingService trading;
@@ -38,9 +38,8 @@ public class LiveScheduler {
     }
 
     /**
-     * Every two seconds during market hours. The pre-market poll paces itself to the configured
-     * interval; this cadence is set by exit checks, where a few seconds of lag is a few seconds of
-     * slippage on a leveraged ETF.
+     * 장 중 2초마다. 장전 폴링은 설정된 주기에 맞춰 스스로 속도를 조절하고, 이 간격을 정하는 건
+     * 청산 확인 쪽입니다 — 레버리지 ETF에서 몇 초의 지연은 곧 몇 초어치 슬리피지입니다.
      */
     @Scheduled(fixedDelay = 2000L)
     public void tick() {
@@ -51,8 +50,8 @@ public class LiveScheduler {
         try {
             trading.tick(now);
         } catch (RuntimeException e) {
-            // The service already halts on its own errors; this is the last net so one bad tick
-            // cannot kill the scheduler thread and silently strand an open position.
+            // 서비스는 자기 오류에 대해 이미 스스로 정지합니다. 이건 마지막 그물로, tick 하나가
+            // 잘못됐다고 스케줄러 스레드가 죽어 열린 포지션이 조용히 방치되는 일을 막습니다.
             log.error("실투자 스케줄러 tick 실패", e);
         }
     }

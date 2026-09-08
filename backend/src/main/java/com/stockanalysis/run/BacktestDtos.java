@@ -6,13 +6,13 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 
-/** API response shapes for backtests. */
+/** 백테스트 API 응답 형태들. */
 public final class BacktestDtos {
 
     private BacktestDtos() {
     }
 
-    /** Full result returned by POST /api/backtests and GET /api/backtests/{id}. */
+    /** POST /api/backtests와 GET /api/backtests/{id}가 돌려주는 전체 결과. */
     public record BacktestResponse(
             Long runId,
             Long strategyId,
@@ -32,7 +32,7 @@ public final class BacktestDtos {
     ) {
     }
 
-    /** Compact row for the history list. */
+    /** 이력 목록용 간략 행. */
     public record BacktestListItem(
             Long runId,
             Long strategyId,
@@ -47,9 +47,9 @@ public final class BacktestDtos {
     }
 
     /**
-     * Request body for POST /api/backtests. Use datasetId for single, groupId for ETF pre-market.
-     * {@code fromDate}/{@code toDate} are inclusive ISO dates (yyyy-MM-dd); omit either for the
-     * dataset's whole span.
+     * POST /api/backtests의 요청 본문. 단일 종목이면 datasetId, ETF 장전이면 groupId를 씁니다.
+     * {@code fromDate}/{@code toDate}는 양끝을 포함하는 ISO 날짜(yyyy-MM-dd)이며, 둘 중 하나를
+     * 빼면 데이터셋의 전체 구간이 됩니다.
      */
     public record RunRequest(Long strategyId, Long datasetId, Long groupId,
                              LocalDate fromDate, LocalDate toDate) {

@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDateTime;
 
-/** App-wide settings. Currently just the commission rate every backtest uses. */
+/** 앱 전역 설정. 지금은 모든 백테스트가 쓰는 수수료율 하나뿐입니다. */
 @RestController
 @RequestMapping("/api/settings")
 public class SettingController {

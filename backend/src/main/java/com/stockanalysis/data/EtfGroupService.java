@@ -13,10 +13,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Manages ETF groups. A group pairs one leverage ETF, one inverse ETF, and one futures series
- * (one dataset per slot). Groups are created and edited on their own screen — named freely, renamed,
- * deleted, and their slots filled from already-uploaded datasets — so adding an ETF pair that didn't
- * exist before never needs a schema or code change.
+ * ETF 그룹을 관리합니다. 그룹은 레버리지 ETF 하나, 인버스 ETF 하나, 선물 계열 하나를 묶습니다
+ * (슬롯당 데이터셋 하나). 그룹은 전용 화면에서 만들고 편집합니다 — 이름을 자유롭게 붙이고,
+ * 바꾸고, 지우고, 이미 업로드된 데이터셋으로 슬롯을 채웁니다 — 그래서 전에 없던 ETF 쌍을
+ * 추가하는 데 스키마나 코드 변경이 필요 없습니다.
  */
 @Service
 public class EtfGroupService {
@@ -29,7 +29,7 @@ public class EtfGroupService {
         this.datasetRepo = datasetRepo;
     }
 
-    /** UI-facing view of a group with its three slots and readiness. */
+    /** 그룹을 세 슬롯과 준비 상태와 함께 보여주는 UI용 뷰. */
     public record EtfGroupView(
             Long id,
             String name,
@@ -43,7 +43,7 @@ public class EtfGroupService {
     public record Slot(Long datasetId, String symbol) {
     }
 
-    /** The three datasets needed to run a pre-market backtest. */
+    /** 장전 백테스트를 돌리는 데 필요한 데이터셋 셋. */
     public record Resolved(Dataset leverage, Dataset inverse, Dataset futures) {
     }
 
@@ -67,20 +67,20 @@ public class EtfGroupService {
         return g;
     }
 
-    /** Deletes a group; its datasets survive and are simply unlinked (bar data is untouched). */
+    /** 그룹을 지웁니다. 데이터셋은 그대로 남고 연결만 끊깁니다(봉 데이터는 건드리지 않습니다). */
     @Transactional
     public void delete(long id) {
         require(id);
         List<Dataset> members = datasetRepo.findByEtfGroupId(id);
         members.forEach(d -> d.setEtfGroupId(null));
         datasetRepo.saveAll(members);
-        datasetRepo.flush(); // unlink before the group row goes away, or the FK rejects the delete
+        datasetRepo.flush(); // 그룹 행이 사라지기 전에 연결을 끊습니다. 아니면 FK가 삭제를 거부합니다
         groupRepo.deleteById(id);
     }
 
     /**
-     * Moves a dataset into a group, or out of any group when {@code groupId} is null. Lets the group
-     * screen fill and clear slots without re-uploading the excel.
+     * 데이터셋을 그룹으로 옮깁니다. {@code groupId}가 null이면 어느 그룹에도 속하지 않게 합니다.
+     * 그룹 화면이 엑셀을 다시 올리지 않고도 슬롯을 채우고 비울 수 있게 해줍니다.
      */
     @Transactional
     public Dataset assignDataset(long datasetId, Long groupId) {
@@ -91,14 +91,14 @@ public class EtfGroupService {
             return d;
         }
         if (groupId.equals(d.getEtfGroupId())) {
-            return d; // already in this group; re-validating would collide with itself
+            return d; // 이미 이 그룹에 속함. 다시 검사하면 자기 자신과 충돌합니다
         }
         validateSlot(d.getMarket(), d.getKind(), groupId);
         d.setEtfGroupId(groupId);
         return d;
     }
 
-    /** A group holds at most one leverage ETF, one inverse ETF, and one futures dataset. */
+    /** 한 그룹에는 레버리지 ETF, 인버스 ETF, 선물 데이터셋이 각각 최대 하나씩입니다. */
     public void validateSlot(Market market, Kind kind, Long groupId) {
         if (groupId == null) {
             return;

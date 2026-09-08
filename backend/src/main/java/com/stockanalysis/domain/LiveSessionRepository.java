@@ -8,12 +8,12 @@ import java.util.Optional;
 
 public interface LiveSessionRepository extends JpaRepository<LiveSession, Long> {
 
-    /** At most one session exists per day — the table enforces it. */
+    /** 하루에 세션은 최대 하나입니다 — 테이블이 강제합니다. */
     Optional<LiveSession> findByTradeDate(LocalDate tradeDate);
 
-    /** History, newest day first. */
+    /** 이력. 최근 날짜부터. */
     List<LiveSession> findAllByOrderByTradeDateDesc();
 
-    /** Sessions that ended with money still committed — used by restart reconciliation. */
+    /** 돈이 걸린 채로 끝난 세션 — 재기동 시 대조에 씁니다. */
     List<LiveSession> findByStateIn(List<LiveState> states);
 }

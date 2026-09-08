@@ -14,8 +14,8 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * The hash is what stops a verified strategy from being edited and then traded anyway. It has to be
- * sensitive to every rule and blind to everything else.
+ * 해시는 검증받은 전략을 고쳐놓고 그대로 매매하는 것을 막는 장치입니다. 모든 규칙에 민감해야
+ * 하고, 그 외의 것에는 눈이 멀어야 합니다.
  */
 class SpecHasherTest {
 
@@ -67,8 +67,8 @@ class SpecHasherTest {
 
     @Test
     void changingTheInvestmentAmountBreaksVerification() {
-        // Position size doesn't change which trades happen, but it does change the won result the
-        // user was shown — so it counts as a change to what was verified.
+        // 포지션 크기는 어떤 거래가 일어날지를 바꾸지 않지만, 사용자가 본 원화 결과는 바꿉니다 —
+        // 그래서 검증된 것에 대한 변경으로 셉니다.
         StrategySpec edited = premarketSpec();
         edited.getCapital().setAmount(50_000_000);
         assertNotEquals(SpecHasher.hash(premarketSpec()), SpecHasher.hash(edited));
@@ -81,7 +81,7 @@ class SpecHasherTest {
         assertTrue(SpecHasher.matches(premarketSpec(), SpecHasher.hash(premarketSpec())));
     }
 
-    /** Hashing must not mutate the spec — it can be a managed JPA field. */
+    /** 해싱이 스펙을 변경하면 안 됩니다 — 관리 상태의 JPA 필드일 수 있습니다. */
     @Test
     void hashingLeavesTheSpecAlone() {
         StrategySpec spec = premarketSpec();

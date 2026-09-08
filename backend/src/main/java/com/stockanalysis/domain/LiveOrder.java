@@ -11,11 +11,11 @@ import jakarta.persistence.Table;
 import java.time.LocalDateTime;
 
 /**
- * One order the system sent (or, in dry-run, would have sent).
+ * 시스템이 보낸(드라이런이면 보냈을) 주문 하나.
  *
- * <p>{@code clientOrderId} is our own idempotency key, derived from (session, side). It is UNIQUE in
- * the database, so if a send times out and we retry, the second insert fails rather than opening a
- * second position — the one failure mode that costs real money twice.
+ * <p>{@code clientOrderId}는 (세션, 방향)에서 만든 우리 자체의 멱등 키입니다. DB에서 UNIQUE라,
+ * 전송이 타임아웃되어 재시도하면 두 번째 insert가 실패합니다 — 두 번째 포지션이 열리는 대신에.
+ * 진짜 돈이 두 번 나가는 유일한 실패 방식이기 때문입니다.
  */
 @Entity
 @Table(name = "live_order")
@@ -79,7 +79,7 @@ public class LiveOrder {
     @Column(name = "filled_at")
     private LocalDateTime filledAt;
 
-    /** Broker response verbatim, as text — see the migration for why this is not a JSON column. */
+    /** 브로커 응답 원문. 텍스트입니다 — JSON 컬럼이 아닌 이유는 마이그레이션 파일 참고. */
     @Column(name = "raw_response", columnDefinition = "text")
     private String rawResponse;
 

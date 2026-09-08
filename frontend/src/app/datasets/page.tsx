@@ -28,7 +28,7 @@ export default function DatasetsPage() {
       const [d, g] = await Promise.all([api.listDatasets(), api.listEtfGroups()]);
       setDatasets(d);
       setGroups(g);
-      // Preselect the first group only while nothing has been chosen yet.
+      // 아직 아무것도 고르지 않은 동안에만 첫 그룹을 미리 선택합니다.
       setEtfGroupId((prev) => (prev === "" && g[0] ? g[0].id : prev));
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));

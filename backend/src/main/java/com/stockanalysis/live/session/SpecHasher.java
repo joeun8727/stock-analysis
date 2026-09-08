@@ -11,13 +11,13 @@ import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
 
 /**
- * Fingerprints a {@link StrategySpec} so we can tell whether the logic now saved is still the logic
- * that was backtested. Without this, a user could verify a strategy, quietly widen its stop-loss,
- * and keep trading a real account on the strength of a backtest that no longer describes it.
+ * {@link StrategySpec}의 지문을 뜹니다. 지금 저장된 로직이 아직 백테스트한 그 로직인지
+ * 가릴 수 있도록. 이게 없으면 사용자가 전략을 검증받은 뒤 손절을 조용히 넓혀놓고, 더는 그
+ * 전략을 설명하지 못하는 백테스트를 근거로 실계좌를 계속 돌릴 수 있습니다.
  *
- * <p>Property order is forced to be alphabetical so the hash depends on the rules, not on Jackson's
- * field ordering. The strategy's {@code name} is excluded by hashing the rule content only — a
- * rename is not a rule change.
+ * <p>속성 순서를 알파벳순으로 강제해서, 해시가 Jackson의 필드 순서가 아니라 규칙에 의존하게
+ * 합니다. 전략의 {@code name}은 규칙 내용만 해싱해 제외합니다 — 이름 변경은 규칙 변경이
+ * 아니기 때문입니다.
  */
 public final class SpecHasher {
 
@@ -29,7 +29,7 @@ public final class SpecHasher {
     private SpecHasher() {
     }
 
-    /** SHA-256 of the canonical rule JSON, hex-encoded. Never null. */
+    /** 정규화된 규칙 JSON의 SHA-256을 16진수로. 절대 null이 아닙니다. */
     public static String hash(StrategySpec spec) {
         if (spec == null) {
             return "";
@@ -51,8 +51,8 @@ public final class SpecHasher {
     }
 
     /**
-     * The hash covers rules only. A copy is made rather than mutating the caller's spec, which may
-     * be a managed JPA field — writing to it would trigger a stray UPDATE.
+     * 해시는 규칙만 덮습니다. 호출자의 스펙을 바꾸는 대신 복사본을 만드는데, 그 스펙이 관리
+     * 상태의 JPA 필드일 수 있기 때문입니다 — 거기에 쓰면 엉뚱한 UPDATE가 나갑니다.
      */
     private static StrategySpec shallowCopyWithoutName(StrategySpec spec) throws Exception {
         StrategySpec copy = CANONICAL.readValue(CANONICAL.writeValueAsBytes(spec), StrategySpec.class);

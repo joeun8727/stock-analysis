@@ -12,16 +12,15 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
- * Runs a full trading day without sending a single order.
+ * 주문을 한 건도 보내지 않고 하루치 매매를 전부 돌립니다.
  *
- * <p>Quotes are real — they are delegated to the wrapped client, so the decisions this makes are the
- * decisions a live run would make. Only the order leg is simulated: a "fill" happens immediately at
- * the quote we just saw. That is optimistic (no slippage, no queue, no rejection), which is exactly
- * the same optimism the backtest has, so a dry run that disagrees with the backtest means something
- * is genuinely wrong rather than merely noisy.
+ * <p>시세는 진짜입니다 — 감싸고 있는 클라이언트에 위임하므로, 여기서 내리는 판단은 실전이
+ * 내릴 판단 그대로입니다. 시뮬레이션되는 건 주문 부분뿐입니다: 방금 본 시세에 즉시 "체결"됩니다.
+ * 낙관적이지만(슬리피지도, 대기열도, 거부도 없음) 그건 백테스트가 가진 낙관과 정확히 같은
+ * 것이라서, 드라이런이 백테스트와 어긋난다면 잡음이 아니라 진짜로 뭔가 잘못된 것입니다.
  *
- * <p>This is the step before paper trading: it proves the schedule, the decision and the plumbing
- * while nothing can go wrong with an account.
+ * <p>모의투자 앞 단계입니다: 계좌에 아무 일도 일어날 수 없는 상태로 일정과 판단과 배관을
+ * 검증합니다.
  */
 public class DryRunBroker implements BrokerClient {
 
@@ -88,12 +87,12 @@ public class DryRunBroker implements BrokerClient {
                 .filter(e -> e.getValue() > 0)
                 .map(e -> new Holding(e.getKey(), e.getValue(), 0.0))
                 .toList();
-        // Cash is reported as unlimited-ish: budget limits come from live_config, and a dry run
-        // should never be blocked by a balance it isn't really spending.
+        // 현금은 사실상 무제한으로 보고합니다: 예산 한도는 live_config에서 오고, 드라이런이
+        // 실제로 쓰지도 않는 잔고 때문에 막히면 안 됩니다.
         return new Balance(Double.MAX_VALUE, holdings, "{\"dryRun\":true}");
     }
 
-    /** Simulated fill timestamp, so callers can record something sensible. */
+    /** 시뮬레이션된 체결 시각. 호출자가 말이 되는 값을 기록할 수 있도록. */
     public static LocalDateTime now() {
         return LocalDateTime.now();
     }

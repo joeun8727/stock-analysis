@@ -37,23 +37,23 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Runs one trading day, end to end, from a strategy that was already backtested.
+ * 백테스트를 마친 전략으로 하루치 매매를 처음부터 끝까지 실행합니다.
  *
- * <p>The whole thing is a clock-driven state machine: {@link #tick(LocalDateTime)} is called
- * repeatedly and does whatever the current state and time call for. Time is a parameter rather than
- * being read inside, so a whole day can be replayed in a test in milliseconds.
+ * <p>전체가 시계로 굴러가는 상태 기계입니다: {@link #tick(LocalDateTime)}이 반복 호출되고,
+ * 그때의 상태와 시각이 요구하는 일을 합니다. 시각을 안에서 읽지 않고 인자로 받기 때문에
+ * 하루치를 테스트에서 수 밀리초에 재생할 수 있습니다.
  *
- * <p>Every judgement call is delegated to the same code the backtest uses —
- * {@link PremarketDecider} for the direction and {@link ExitEvaluator} for the exit. This class
- * decides <em>nothing</em> about trading; it moves quotes in, orders out, and records what happened.
- * That is the property that makes a backtest mean something.
+ * <p>판단은 전부 백테스트가 쓰는 그 코드에 위임합니다 — 방향은 {@link PremarketDecider},
+ * 청산은 {@link ExitEvaluator}. 이 클래스는 매매에 대해 <em>아무것도</em> 결정하지 않습니다.
+ * 시세를 넣고, 주문을 내보내고, 일어난 일을 기록할 뿐입니다. 백테스트가 의미를 갖는 건
+ * 바로 이 성질 때문입니다.
  *
- * <p>Where it deliberately differs from the backtest, and why:
+ * <p>백테스트와 의도적으로 다른 지점과 그 이유:
  * <ul>
- *   <li>The backtest closes on the last bar of the day; live closes at a configured time before the
- *       closing auction, because an order placed into the auction does not fill when we want.</li>
- *   <li>The backtest fills exactly at the stop price; live fills wherever the market is. The
- *       difference is slippage, and it always goes against us.</li>
+ *   <li>백테스트는 그날 마지막 봉에 청산하지만, 실전은 종가 단일가 전의 설정된 시각에 냅니다.
+ *       단일가에 걸린 주문은 원하는 때 체결되지 않기 때문입니다.</li>
+ *   <li>백테스트는 손절가에 정확히 체결되지만 실전은 시장이 있는 자리에서 체결됩니다.
+ *       그 차이가 슬리피지이고, 항상 우리에게 불리한 방향입니다.</li>
  * </ul>
  */
 @Service
@@ -61,7 +61,7 @@ public class LiveTradingService {
 
     private static final Logger log = LoggerFactory.getLogger(LiveTradingService.class);
 
-    /** Give up on an unfilled order after this long rather than leaving it dangling. */
+    /** 체결되지 않은 주문을 이만큼 지나면 포기합니다 — 매달아둔 채로 두지 않기 위해서. */
     private static final int ORDER_TIMEOUT_MINUTES = 5;
 
     private final LiveConfigService configService;
@@ -109,18 +109,18 @@ public class LiveTradingService {
         this.entityManager = entityManager;
     }
 
-    // ------------------------------------------------------------------ the clock
+    // ------------------------------------------------------------------ 시계
 
     /**
-     * Advances the trading day. Synchronized because the scheduler and a manual API call can both
-     * land here, and two threads placing an entry order is the one bug that costs money twice.
+     * 거래일을 한 칸 진행시킵니다. 스케줄러와 수동 API 호출이 동시에 여기로 들어올 수 있어
+     * synchronized입니다 — 두 스레드가 진입 주문을 내는 것이 돈이 두 번 나가는 유일한 버그입니다.
      */
     public synchronized void tick(LocalDateTime now) {
         LiveConfig config = configService.get();
         LocalDate today = now.toLocalDate();
 
         if (!config.isArmedFor(today)) {
-            return; // the day was never switched on; the scheduler does nothing at all
+            return; // 그날을 켠 적이 없습니다. 스케줄러는 아무 일도 하지 않습니다.
         }
 
         LiveSession session = sessions.findByTradeDate(today).orElse(null);
@@ -143,12 +143,12 @@ public class LiveTradingService {
                 case HOLDING -> monitorPosition(session, rt, config, now);
                 case EXIT_PENDING -> pollExit(session, rt, now);
                 default -> {
-                    // SKIPPED / CLOSED / HALTED are terminal; nothing to advance.
+                    // SKIPPED / CLOSED / HALTED은 종착 상태라 더 진행할 것이 없습니다.
                 }
             }
         } catch (RuntimeException e) {
-            // Any unhandled failure while money is exposed is a halt, not a retry: we would rather
-            // stop and be looked at than keep acting on a system we no longer understand.
+            // 돈이 걸린 상태에서 처리되지 않은 실패는 재시도가 아니라 정지입니다: 이해하지 못하는
+            // 시스템 위에서 계속 움직이느니 멈춰서 사람이 보게 하는 편이 낫습니다.
             log.error("실투자 세션 처리 중 오류", e);
             record(session, "ERROR", e.getMessage(), null);
             if (session.getState().holdsExposure()) {
@@ -157,7 +157,7 @@ public class LiveTradingService {
         }
     }
 
-    // ------------------------------------------------------------------ session start
+    // ------------------------------------------------------------------ 세션 시작
 
     private LiveSession tryStartSession(LiveConfig config, LocalDateTime now) {
         StrategySpec spec = loadSpec(config.getStrategyId());
@@ -167,8 +167,8 @@ public class LiveTradingService {
         }
         LocalTime windowEnd = LocalTime.parse(spec.getPremarket().getEndTime());
         if (!now.toLocalTime().isBefore(windowEnd)) {
-            // The pre-market window has already passed; starting now would trade on a partial
-            // measurement, which is worse than not trading.
+            // 장전 관측 구간이 이미 지났습니다. 지금 시작하면 반쪽짜리 측정으로 매매하게 되는데,
+            // 그건 아예 매매하지 않는 것보다 나쁩니다.
             refuseOnce(now.toLocalDate(), "장전 관측 시간(" + windowEnd + ")이 지나 오늘은 시작하지 않습니다.");
             return null;
         }
@@ -227,7 +227,7 @@ public class LiveTradingService {
         return dataset.getTicker();
     }
 
-    /** Logs a refusal once a day instead of on every tick. */
+    /** 거절 사유를 매 tick마다가 아니라 하루 한 번만 남깁니다. */
     private void refuseOnce(LocalDate date, String reason) {
         if (date.equals(refusalLoggedFor)) {
             return;
@@ -243,15 +243,15 @@ public class LiveTradingService {
         }
         StrategySpec spec = loadSpec(session.getStrategyId());
         EtfGroupService.Resolved group = etfGroups.resolve(session.getEtfGroupId());
-        // The bar length is a property of the data the strategy was validated on; live bars must be
-        // built at the same interval or MA20 stops meaning what it meant in the backtest.
+        // 봉 길이는 그 전략이 검증받은 데이터의 성질입니다. 실시간 봉도 같은 간격으로 조립해야
+        // MA20이 백테스트에서 뜻하던 것을 계속 뜻합니다.
         int interval = group.leverage().getBarIntervalMinutes();
 
         runtime = new SessionRuntime(session.getId(), session.getTradeDate(), spec, interval,
                 group.leverage().getTicker(), group.inverse().getTicker(),
                 group.leverage().getFeeRatePct(), group.inverse().getFeeRatePct());
 
-        // Rebuilt after a restart: the quotes already collected today are in the database.
+        // 재기동 후 재구성: 오늘 이미 모아둔 시세는 DB에 있습니다.
         List<PremarketDecider.PricePoint> stored = ticks.findBySessionIdOrderByTsAsc(session.getId())
                 .stream()
                 .map(t -> new PremarketDecider.PricePoint(t.getTs(), t.getPrice()))
@@ -268,13 +268,13 @@ public class LiveTradingService {
         if (strategy == null) {
             return null;
         }
-        // Same trap as BacktestService: a managed Strategy gets dirty-checked on spec_json and
-        // silently rewritten. Detach before reading the spec.
+        // BacktestService와 같은 함정: 관리 상태의 Strategy는 spec_json이 더티 체킹되어
+        // 조용히 덮어써집니다. 스펙을 읽기 전에 detach합니다.
         entityManager.detach(strategy);
         return strategy.getSpec();
     }
 
-    // ------------------------------------------------------------------ pre-market
+    // ------------------------------------------------------------------ 장전
 
     private void maybeOpenWindow(LiveSession session, SessionRuntime rt, LocalDateTime now) {
         LocalTime start = LocalTime.parse(rt.spec().getPremarket().getStartTime());
@@ -298,7 +298,7 @@ public class LiveTradingService {
                 rt.addSample(now, quote.price());
                 ticks.save(new LivePremarketTick(session.getId(), now, quote.price()));
             } catch (RuntimeException e) {
-                // One failed poll is not fatal — the decision uses first and last of whatever we got.
+                // 한 번 실패한 폴링은 치명적이지 않습니다 — 판단은 모은 것의 첫값과 끝값만 씁니다.
                 log.warn("장전 선물 시세 조회 실패: {}", e.toString());
             }
             return;
@@ -307,8 +307,8 @@ public class LiveTradingService {
     }
 
     /**
-     * The 09:00 call. The rule is not implemented here — it is {@link PremarketDecider}, the same
-     * function the backtest ran over historical bars, fed with the quotes we just polled.
+     * 09:00의 판단. 규칙은 여기 있지 않습니다 — {@link PremarketDecider}이고, 백테스트가 과거 봉에
+     * 돌렸던 바로 그 함수에 방금 폴링한 시세를 그대로 넣습니다.
      */
     private void decideDirection(LiveSession session, SessionRuntime rt, LiveConfig config, LocalDateTime now) {
         PremarketDecider.Decision decision =
@@ -359,9 +359,9 @@ public class LiveTradingService {
     }
 
     /**
-     * Per-trade budget, capped by the configured limit. {@code FIXED} spends the strategy's amount
-     * every day; {@code COMPOUND} spends what the account actually holds, which is the honest live
-     * reading of "reinvest the profits".
+     * 거래당 예산. 설정한 한도로 잘립니다. {@code FIXED}는 매일 전략에 적힌 금액을 쓰고,
+     * {@code COMPOUND}는 계좌가 실제로 들고 있는 금액을 씁니다 — "수익을 재투자한다"를
+     * 실전에서 정직하게 읽으면 후자입니다.
      */
     private double budgetFor(StrategySpec spec, LiveConfig config) {
         double fromSpec = spec.getCapital().getAmount();
@@ -375,18 +375,18 @@ public class LiveTradingService {
                 budget = fromSpec;
             }
         }
-        // The configured cap always wins. It is the last line between a mis-typed strategy amount
-        // and the account.
+        // 설정한 상한이 언제나 이깁니다. 전략 금액을 잘못 입력했을 때 계좌와의 사이에 남는
+        // 마지막 한 줄입니다.
         return Math.min(budget, config.getMaxOrderAmount());
     }
 
-    // ------------------------------------------------------------------ orders
+    // ------------------------------------------------------------------ 주문
 
     private void placeOrder(LiveSession session, SessionRuntime rt, String ticker,
                             boolean buy, long quantity, LocalDateTime now) {
         String clientOrderId = clientOrderId(session, buy);
         if (orders.findByClientOrderId(clientOrderId).isPresent()) {
-            // Already sent. This is the retry guard doing its job.
+            // 이미 보냈습니다. 재시도 방지 장치가 제 일을 한 경우입니다.
             log.warn("중복 주문 시도를 막았습니다: {}", clientOrderId);
             return;
         }
@@ -399,8 +399,8 @@ public class LiveTradingService {
         order.setOrderType(LiveOrder.TYPE_MARKET);
         order.setClientOrderId(clientOrderId);
         order.setRequestedAt(now);
-        // Persisted *before* sending: if the send throws after the broker accepted it, the row is
-        // still here and the unique key stops a second attempt.
+        // 보내기 **전에** 저장합니다: 브로커가 받은 뒤에 전송이 예외로 끝나더라도 행은 남아 있고,
+        // UNIQUE 키가 두 번째 시도를 막습니다.
         order = orders.save(order);
 
         BrokerClient.OrderAck ack;
@@ -433,7 +433,7 @@ public class LiveTradingService {
         sessions.save(session);
     }
 
-    /** Stable per (session, side): the same day cannot produce two entries or two exits. */
+    /** (세션, 방향)마다 고정: 같은 날에 진입 둘 또는 청산 둘이 나올 수 없습니다. */
     private static String clientOrderId(LiveSession session, boolean buy) {
         return "S" + session.getId() + "-" + (buy ? "BUY" : "SELL");
     }
@@ -517,7 +517,7 @@ public class LiveTradingService {
         return found.isEmpty() ? null : found.get(found.size() - 1);
     }
 
-    // ------------------------------------------------------------------ holding
+    // ------------------------------------------------------------------ 보유 중
 
     private void monitorPosition(LiveSession session, SessionRuntime rt, LiveConfig config, LocalDateTime now) {
         String ticker = session.getChosenTicker();
@@ -526,21 +526,21 @@ public class LiveTradingService {
             quote = feed.stockPrice(ticker);
         } catch (RuntimeException e) {
             log.warn("보유 종목 시세 조회 실패: {}", e.toString());
-            return; // a missed quote is not a reason to sell; the next tick tries again
+            return; // 시세를 한 번 놓친 것은 파는 이유가 되지 않습니다. 다음 tick에서 다시 시도합니다.
         }
 
         double entryPrice = session.getEntryPrice();
 
-        // Feeding the bar builder is what lets indicator-based sell rules work live exactly as they
-        // did in the backtest. A completed bar is the moment those rules get evaluated.
+        // 봉 조립기에 시세를 넣어야 지표 기반 매도 규칙이 백테스트와 똑같이 동작합니다.
+        // 봉 하나가 완성되는 순간이 그 규칙을 평가하는 시점입니다.
         Optional<Bar> completed = rt.bars().accept(now, quote.price(), quote.cumulativeVolume());
         if (completed.isPresent()) {
             rt.countBar();
             Bar bar = completed.get();
             Bar prev = previousBar(rt);
-            // lastOverall/lastBarOfDay are false on purpose: the engine's day-end branch keys off
-            // "the last bar in the data", which live cannot know. Day-end is handled below, on the
-            // clock, so the order goes in before the closing auction rather than into it.
+            // lastOverall/lastBarOfDay를 false로 두는 건 의도적입니다: 엔진의 장마감 분기는
+            // "데이터의 마지막 봉"을 기준으로 하는데 실전은 그걸 알 수 없습니다. 장마감은 아래에서
+            // 시계로 처리해, 주문이 종가 단일가에 걸리는 대신 그 전에 나가게 합니다.
             ExitEvaluator.Decision decision = ExitEvaluator.decide(
                     bar, prev, false, false, rt.barsHeld(),
                     rt.spec().getExit(), rt.spec().getExit().asGroup(), entryPrice, null, null);
@@ -551,8 +551,8 @@ public class LiveTradingService {
             }
         }
 
-        // Between bars, only the price-level exits can fire — the same intrabar check the backtest
-        // makes with a bar's high and low, just arriving one tick at a time.
+        // 봉과 봉 사이에는 가격선 청산만 발동할 수 있습니다 — 백테스트가 봉의 고가·저가로 하는
+        // 장중 판정과 같은 것이, 틱 단위로 하나씩 도착하는 것뿐입니다.
         ExitEvaluator.Decision live = ExitEvaluator.checkLivePrice(
                 rt.spec().getExit(), entryPrice, quote.price(), now.toLocalTime());
         if (live != null) {
@@ -588,7 +588,7 @@ public class LiveTradingService {
 
     private Bar previousBar(SessionRuntime rt) {
         List<Bar> bars = rt.bars().completedBars();
-        // completedBars() already includes the bar we just sealed, so "previous" is one before it.
+        // completedBars()에는 방금 마감한 봉이 이미 들어 있어서, "직전"은 그것의 한 칸 앞입니다.
         return bars.size() >= 2 ? bars.get(bars.size() - 2) : null;
     }
 
@@ -625,12 +625,12 @@ public class LiveTradingService {
                 session.getProfitAmount());
     }
 
-    // ------------------------------------------------------------------ indicators
+    // ------------------------------------------------------------------ 지표
 
     /**
-     * Fills the bar buffer from the broker's minute bars so indicator rules work from the first bar
-     * held. Skipped entirely when the strategy has no indicator-based sell rules — most pre-market
-     * strategies exit on price and time alone, and this costs a burst of API calls.
+     * 브로커의 분봉으로 봉 버퍼를 채워, 보유 첫 봉부터 지표 규칙이 동작하게 합니다. 전략에 지표
+     * 기반 매도 규칙이 없으면 통째로 건너뜁니다 — 장전 전략 대부분은 가격과 시간만으로 청산하고,
+     * 이 작업은 API 호출을 한 번에 몰아 쓰기 때문입니다.
      */
     private void warmUpIndicators(LiveSession session, SessionRuntime rt, LocalDateTime now) {
         if (rt.isWarmedUp()) {
@@ -638,11 +638,11 @@ public class LiveTradingService {
         }
         rt.markWarmedUp();
         if (rt.spec().getExit().asGroup().isEmpty()) {
-            return; // no rule reads an indicator, so there is nothing to warm up
+            return; // 지표를 읽는 규칙이 없으니 워밍업할 것도 없습니다.
         }
         String ticker = session.getChosenTicker();
         try {
-            // Long averages reach back past today: volMA120 on 3-minute bars is six hours of data.
+            // 긴 이동평균은 오늘 이전까지 거슬러 올라갑니다: 3분봉의 volMA120은 6시간치입니다.
             List<Bar> previous = broker.minuteBars(ticker, now.toLocalDate().minusDays(1));
             List<Bar> today = broker.minuteBars(ticker, now.toLocalDate());
             rt.bars().warmUp(previous);
@@ -651,17 +651,17 @@ public class LiveTradingService {
                     "지표 워밍업 완료: 전일 " + previous.size() + "분봉 + 당일 " + today.size()
                             + "분봉 → " + rt.bars().completedBarCount() + "봉", null);
         } catch (RuntimeException e) {
-            // Not fatal: unwarmed indicators stay NaN, and a NaN comparison is false, so the rule
-            // simply does not fire. Better than firing on invented numbers.
+            // 치명적이지 않습니다: 워밍업이 안 된 지표는 NaN으로 남고, NaN 비교는 false이므로
+            // 그 규칙은 그냥 발동하지 않습니다. 지어낸 숫자로 발동하는 것보다 낫습니다.
             record(session, "WARMUP_FAILED",
                     "지표 워밍업에 실패했습니다. 지표 기반 매도 조건은 데이터가 쌓일 때까지 발동하지 않습니다: "
                             + e.getMessage(), null);
         }
     }
 
-    // ------------------------------------------------------------------ halt & recovery
+    // ------------------------------------------------------------------ 정지와 복구
 
-    /** Stops the day. Optionally liquidates first — the caller decides, never this method. */
+    /** 그날을 멈춥니다. 필요하면 먼저 청산합니다 — 그 결정은 호출자가 하며 이 메서드가 하지 않습니다. */
     public synchronized LiveSession halt(LiveSession session, String reason, boolean closePosition) {
         if (closePosition && session.getState() == LiveState.HOLDING && session.getQuantity() != null) {
             try {
@@ -670,7 +670,7 @@ public class LiveTradingService {
                 placeOrder(session, rt, session.getChosenTicker(), false, session.getQuantity(),
                         LocalDateTime.now());
                 record(session, "HALT_LIQUIDATE", "긴급 정지: 보유분 시장가 청산 주문을 냈습니다.", null);
-                // Leave the state at EXIT_PENDING so the fill is still collected, then halt.
+                // 체결은 계속 받아야 하므로 상태를 EXIT_PENDING에 둔 채로 정지합니다.
                 return sessions.save(session);
             } catch (RuntimeException e) {
                 record(session, "HALT_LIQUIDATE_FAILED", "긴급 청산 주문에 실패했습니다: " + e.getMessage(), null);
@@ -684,16 +684,16 @@ public class LiveTradingService {
         return saved;
     }
 
-    /** Kill switch for today's session, if there is one. */
+    /** 오늘 세션이 있다면, 그 세션에 대한 킬 스위치. */
     public synchronized Optional<LiveSession> haltToday(String reason, boolean closePosition) {
         return sessions.findByTradeDate(LocalDate.now())
                 .map(s -> halt(s, reason, closePosition));
     }
 
     /**
-     * Restart safety. If a session is still holding, the position on record is compared with what
-     * the broker actually reports. A mismatch halts rather than guesses — buying or selling to
-     * "fix" a discrepancy we do not understand is how a small problem becomes a large one.
+     * 재기동 안전장치. 아직 보유 중인 세션이 있으면 기록된 포지션과 브로커가 실제로 알려주는 것을
+     * 대조합니다. 어긋나면 추측하지 않고 정지합니다 — 이해하지 못한 불일치를 "고치려고" 사거나
+     * 파는 것이 작은 문제를 큰 문제로 만드는 경로입니다.
      */
     public synchronized void reconcileOnStartup() {
         LocalDate today = LocalDate.now();
@@ -706,7 +706,7 @@ public class LiveTradingService {
             return;
         }
         if (props.getMode() == LiveMode.DRY_RUN) {
-            // A dry run holds nothing real; its in-memory position is simply gone.
+            // 드라이런은 실제로 들고 있는 것이 없습니다. 메모리상의 포지션은 그냥 사라집니다.
             halt(session, "드라이런 중 재기동되어 세션을 종료했습니다.", false);
             return;
         }
@@ -728,7 +728,7 @@ public class LiveTradingService {
         }
     }
 
-    // ------------------------------------------------------------------ helpers
+    // ------------------------------------------------------------------ 보조
 
     private void record(LiveSession session, String type, String message, String detail) {
         events.save(new LiveEvent(session == null ? null : session.getId(), type, message, detail));

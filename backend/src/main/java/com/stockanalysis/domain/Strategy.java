@@ -14,7 +14,7 @@ import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDateTime;
 
-/** A saved trading logic. The rule tree is stored as JSON in {@code spec_json}. */
+/** 저장된 매매 로직. 규칙 트리는 {@code spec_json}에 JSON으로 들어 있습니다. */
 @Entity
 @Table(name = "strategy")
 public class Strategy {

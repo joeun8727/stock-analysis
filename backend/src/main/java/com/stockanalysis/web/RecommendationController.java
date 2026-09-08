@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
-/** Generates LLM-recommended strategies (via the Claude CLI) and saves them as source=LLM. */
+/** LLM 추천 전략을 만들어(Claude CLI 경유) source=LLM으로 저장합니다. */
 @RestController
 @RequestMapping("/api/recommendations")
 public class RecommendationController {

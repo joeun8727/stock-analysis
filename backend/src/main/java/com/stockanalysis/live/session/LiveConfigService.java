@@ -13,11 +13,11 @@ import java.time.LocalTime;
 import java.time.format.DateTimeParseException;
 
 /**
- * Reads and updates the single live-trading setup row.
+ * 실투자 설정 단일 행을 읽고 갱신합니다.
  *
- * <p>Note what this service does <em>not</em> accept: any trading rule. Take-profit, stop-loss,
- * time bands and the pre-market threshold are edited on the strategy screen and nowhere else, so
- * the thing being traded stays byte-identical to the thing that was backtested.
+ * <p>이 서비스가 받지 <em>않는</em> 것에 주목하세요: 매매 규칙은 하나도 받지 않습니다. 익절,
+ * 손절, 시간대 밴드, 장전 임계치는 전략 화면에서만 편집합니다. 그래야 매매되는 것이 백테스트한
+ * 것과 바이트 단위로 같게 유지됩니다.
  */
 @Service
 public class LiveConfigService {
@@ -32,7 +32,7 @@ public class LiveConfigService {
         this.gate = gate;
     }
 
-    /** Settings the user may change. Everything here is execution environment, not strategy. */
+    /** 사용자가 바꿀 수 있는 설정. 여기 있는 건 전부 실행 환경이고 전략이 아닙니다. */
     public record Update(
             Long strategyId,
             Long etfGroupId,
@@ -49,8 +49,8 @@ public class LiveConfigService {
     @Transactional(readOnly = true)
     public LiveConfig get() {
         return repo.findById(LiveConfig.ID).orElseGet(() -> {
-            // The V8 migration seeds this row; fall back to a transient default rather than
-            // failing the screen if it is ever missing.
+            // V8 마이그레이션이 이 행을 심어둡니다. 혹시라도 없으면 화면을 실패시키는 대신
+            // 영속화되지 않은 기본값으로 폴백합니다.
             LiveConfig fallback = new LiveConfig();
             fallback.setId(LiveConfig.ID);
             return fallback;
@@ -100,18 +100,18 @@ public class LiveConfigService {
             config.setMinVerifiedDays(Math.max(0, req.minVerifiedDays()));
         }
 
-        // Picking a strategy re-establishes what "verified" means: the run it is judged against and
-        // the exact rules that run scored. Changing the rules later will no longer match this hash.
+        // 전략을 고르면 "검증됨"의 의미가 새로 정해집니다: 근거가 되는 실행과, 그 실행이 점수를
+        // 매긴 정확한 규칙. 나중에 규칙을 바꾸면 이 해시와 더는 맞지 않습니다.
         if (strategyChanged || config.getVerifiedSpecHash() == null) {
             rebaseVerification(config);
         }
 
-        // A settings change is not consent to trade today. Re-arming is a separate, deliberate act.
+        // 설정 변경은 오늘 매매하겠다는 동의가 아닙니다. 재활성화는 별개의 의도적인 행동입니다.
         config.setArmedDate(null);
         return repo.save(config);
     }
 
-    /** Records the strategy's current rules and its latest backtest as the verification basis. */
+    /** 전략의 현재 규칙과 최신 백테스트를 검증 근거로 기록합니다. */
     @Transactional
     public LiveConfig rebaseVerification(LiveConfig config) {
         config.setVerifiedRunId(null);
@@ -125,12 +125,12 @@ public class LiveConfigService {
         }
         BacktestRun run = gate.latestRunFor(config.getStrategyId());
         if (run == null) {
-            return config; // never backtested — the gate will say so
+            return config; // 백테스트한 적 없음 — 게이트가 그렇게 알려줍니다
         }
         if (strategy.getUpdatedAt() != null && run.getCreatedAt() != null
                 && run.getCreatedAt().isBefore(strategy.getUpdatedAt())) {
-            // The newest run predates the newest edit, so it did not test these rules. Leaving the
-            // hash unset makes the gate fall back to exactly that complaint.
+            // 가장 최근 실행이 가장 최근 수정보다 앞서므로, 지금 이 규칙을 시험한 것이 아닙니다.
+            // 해시를 비워두면 게이트가 정확히 그 지적으로 폴백합니다.
             return config;
         }
         config.setVerifiedRunId(run.getId());
@@ -138,7 +138,7 @@ public class LiveConfigService {
         return config;
     }
 
-    /** Turns trading on for a specific day. Refuses when the strategy is not verified. */
+    /** 특정 날짜에 대해 매매를 켭니다. 전략이 검증되지 않았으면 거부합니다. */
     @Transactional
     public LiveConfig arm(LocalDate date) {
         LiveConfig config = repo.findById(LiveConfig.ID)

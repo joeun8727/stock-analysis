@@ -17,8 +17,8 @@ import java.nio.file.Path;
 import java.util.List;
 
 /**
- * Handles dataset uploads: stores the original xlsx under {@code data/}, streams it into bars,
- * batch-loads them into {@code price_bar}, and records dataset metadata.
+ * 데이터셋 업로드를 처리합니다: 원본 xlsx를 {@code data/} 아래에 저장하고, 스트리밍으로 봉을
+ * 읽어 {@code price_bar}에 배치 적재한 뒤 데이터셋 메타데이터를 기록합니다.
  */
 @Service
 public class DatasetService {
@@ -48,8 +48,8 @@ public class DatasetService {
     }
 
     /**
-     * @param etfGroupId group to file this dataset under, picked from the existing groups; null
-     *                   leaves it ungrouped (pre-market mode unavailable until it's assigned).
+     * @param etfGroupId 이 데이터셋을 넣을 그룹. 기존 그룹 중에서 고르며, null이면 그룹 없이
+     *                   둡니다(지정하기 전까지 장전 모드를 쓸 수 없습니다).
      */
     @Transactional
     public Dataset upload(MultipartFile file, String symbol, Market market, Kind kind, Long etfGroupId) {
@@ -82,17 +82,17 @@ public class DatasetService {
             throw new IllegalArgumentException("봉 데이터를 찾을 수 없습니다. 파일 형식을 확인해주세요.");
         }
 
-        BarSeries series = new BarSeries(bars); // ascending
+        BarSeries series = new BarSeries(bars); // 오름차순
         Dataset ds = new Dataset();
         ds.setSymbol(symbol.trim());
         ds.setMarket(market);
         ds.setKind(effectiveKind);
         ds.setEtfGroupId(etfGroupId);
-        // New symbols start at the global default; per-symbol rates are edited on the fee screen.
+        // 새 종목은 전역 기본값에서 시작합니다. 종목별 요율은 수수료 화면에서 편집합니다.
         ds.setFeeRatePct(feeSettings.currentRatePct());
         ds.setOriginalFilename(filename);
         ds.setBarCount(series.size());
-        // Measured from the file itself: the same symbol can also be uploaded as 1-minute bars.
+        // 파일 자체에서 측정합니다: 같은 종목을 1분봉으로도 올릴 수 있습니다.
         ds.setBarIntervalMinutes(series.inferIntervalMinutes());
         ds.setFromTs(series.bars().get(0).ts());
         ds.setToTs(series.bars().get(series.size() - 1).ts());
@@ -102,7 +102,7 @@ public class DatasetService {
         return saved;
     }
 
-    /** Sets this symbol's commission. Every backtest that trades it picks the new rate up. */
+    /** 이 종목의 수수료를 설정합니다. 이 종목을 매매하는 모든 백테스트가 새 요율을 씁니다. */
     @Transactional
     public Dataset setFeeRate(long id, double feeRatePct) {
         Dataset d = repo.findById(id)
@@ -112,8 +112,8 @@ public class DatasetService {
     }
 
     /**
-     * Sets the exchange code used for live orders. Backtests never read it, so it stays optional —
-     * but live trading refuses a dataset without one, since {@code symbol} is only a display name.
+     * 실주문에 쓰는 종목코드를 설정합니다. 백테스트는 읽지 않으므로 선택 사항이지만, 실투자는
+     * 이 값이 없는 데이터셋을 거부합니다 — {@code symbol}은 표시명일 뿐이기 때문입니다.
      */
     @Transactional
     public Dataset setTicker(long id, String ticker) {
@@ -123,10 +123,10 @@ public class DatasetService {
         return d;
     }
 
-    /** Korean listed codes are 6 digits; futures codes are short alphanumerics like "101W03". */
+    /** 국내 상장 코드는 6자리이고, 선물 코드는 "101W03" 같은 짧은 영숫자입니다. */
     private static String validateTicker(String ticker) {
         if (ticker == null || ticker.isBlank()) {
-            return null; // clearing it is allowed
+            return null; // 비우는 것은 허용합니다
         }
         String trimmed = ticker.trim().toUpperCase();
         if (!trimmed.matches("[A-Z0-9]{4,12}")) {
@@ -140,7 +140,7 @@ public class DatasetService {
         if (!repo.existsById(id)) {
             throw new IllegalArgumentException("데이터셋을 찾을 수 없습니다: " + id);
         }
-        // price_bar rows are removed by the ON DELETE CASCADE foreign key.
+        // price_bar 행은 ON DELETE CASCADE 외래키가 지웁니다.
         repo.deleteById(id);
     }
 

@@ -53,11 +53,11 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 /**
- * A whole trading day, replayed in milliseconds.
+ * 하루치 매매 전체를 수 밀리초에 재생합니다.
  *
- * <p>Time is a parameter to {@code tick}, so these walk the clock from the pre-market window to the
- * close and assert the state machine did what the strategy says — including that it refuses to
- * trade a strategy the verification gate rejects, which is the rule keeping "backtest first" real.
+ * <p>{@code tick}이 시각을 인자로 받으므로, 여기서는 장전 구간부터 장 마감까지 시계를 걸어가며
+ * 상태 기계가 전략이 말한 대로 움직였는지 확인합니다 — 검증 게이트가 거부한 전략은 매매하지
+ * 않는다는 것까지 포함해서. 그게 "먼저 백테스트"를 실제로 지켜주는 규칙입니다.
  */
 class LiveSessionTest {
 
@@ -80,7 +80,7 @@ class LiveSessionTest {
     private double futuresPrice = 100.0;
     private double etfPrice = 10_000.0;
 
-    /** Records orders and fills them at the price the feed is showing. */
+    /** 주문을 기록하고, 피드가 보여주는 가격에 체결시킵니다. */
     private static final class FakeBroker implements BrokerClient {
         private final AtomicLong seq = new AtomicLong(1);
         private final Map<String, Long> filledQty = new HashMap<>();
@@ -188,7 +188,7 @@ class LiveSessionTest {
         when(sessions.save(any(LiveSession.class))).thenAnswer(inv -> {
             LiveSession s = inv.getArgument(0);
             if (s.getId() == null) {
-                // Mirror the identity column so client order ids are stable per session.
+                // 세션마다 client order id가 안정적이도록 identity 컬럼을 흉내 냅니다.
                 setId(s, sessionSeq.getAndIncrement());
             }
             savedSessions.put(s.getId(), s);
@@ -276,16 +276,16 @@ class LiveSessionTest {
         return savedSessions.values().iterator().next();
     }
 
-    /** Walks the pre-market window with a rising futures price and enters the leverage ETF. */
+    /** 장전 선물이 오르는 구간을 걸어가며 레버리지 ETF에 진입합니다. */
     private void runUpToEntry() {
-        tick(8, 44);                       // session created, ARMED
-        tick(8, 45);                       // window opens
-        for (int m = 46; m <= 58; m++) {   // quotes climbing 100 -> ~100.4
+        tick(8, 44);                       // 세션 생성, ARMED
+        tick(8, 45);                       // 관측 구간 시작
+        for (int m = 46; m <= 58; m++) {   // 시세가 100 -> 약 100.4로 상승
             futuresPrice = 100.0 + (m - 45) * 0.03;
             tick(8, m);
         }
-        tick(9, 0);                        // decide + buy
-        tick(9, 1);                        // fill
+        tick(9, 0);                        // 판단 + 매수
+        tick(9, 1);                        // 체결
     }
 
     @Test
@@ -298,7 +298,7 @@ class LiveSessionTest {
         assertEquals(LEV, s.getChosenTicker());
         assertTrue(s.getTrendPct() > 0.1, "장전 변화율이 임계치를 넘어야 진입합니다");
 
-        // 10,000,000 budget / 10,000 per share = 1,000 whole shares.
+        // 예산 10,000,000 / 주당 10,000 = 정확히 1,000주.
         assertEquals(1000L, s.getQuantity());
         assertEquals(10_000.0, s.getEntryPrice(), 1e-9);
         assertEquals(1, broker.requests.size());
@@ -310,7 +310,7 @@ class LiveSessionTest {
         tick(8, 44);
         tick(8, 45);
         for (int m = 46; m <= 58; m++) {
-            futuresPrice = 100.0 + (m - 45) * 0.001; // ~0.013% by the close of the window
+            futuresPrice = 100.0 + (m - 45) * 0.001; // 구간이 끝날 때 약 0.013%
             tick(8, m);
         }
         tick(9, 0);
@@ -321,7 +321,7 @@ class LiveSessionTest {
         assertTrue(broker.requests.isEmpty(), "임계치 미달이면 주문이 나가면 안 됩니다");
     }
 
-    /** A falling pre-market buys the inverse — the mirror of the leverage case. */
+    /** 장전이 하락이면 인버스를 삽니다 — 레버리지 경우의 거울상입니다. */
     @Test
     void aFallingPremarketBuysInverse() {
         tick(8, 44);
@@ -343,19 +343,19 @@ class LiveSessionTest {
     void priceFallingThroughTheStopSellsAndClosesTheSession() {
         runUpToEntry();
 
-        etfPrice = 9_900.0;            // exactly the 1% stop
+        etfPrice = 9_900.0;            // 정확히 1% 손절선
         broker.fillPrice = 9_900.0;
-        tick(9, 5);                    // exit signal + sell order
+        tick(9, 5);                    // 청산 시그널 + 매도 주문
         assertEquals(LiveState.EXIT_PENDING, session().getState());
 
-        tick(9, 6);                    // fill
+        tick(9, 6);                    // 체결
         LiveSession s = session();
         assertEquals(LiveState.CLOSED, s.getState());
         assertEquals("STOP_LOSS", s.getExitReason());
         assertEquals(2, broker.requests.size());
         assertTrue(!broker.requests.get(1).buy());
 
-        // 1,000 shares from 10,000 to 9,900 is -100,000 before commission on both legs.
+        // 1,000주가 10,000에서 9,900으로, 양쪽 수수료를 빼기 전 -100,000입니다.
         double expectedFees = (1000 * 10_000 + 1000 * 9_900) * 0.00015;
         assertEquals(expectedFees, s.getFeeAmount(), 1e-6);
         assertEquals(-100_000 - expectedFees, s.getProfitAmount(), 1e-6);
@@ -365,7 +365,7 @@ class LiveSessionTest {
     void priceReachingTheTargetTakesProfit() {
         runUpToEntry();
 
-        etfPrice = 10_200.0;           // the 2% target
+        etfPrice = 10_200.0;           // 2% 목표가
         broker.fillPrice = 10_200.0;
         tick(9, 30);
         tick(9, 31);
@@ -377,14 +377,14 @@ class LiveSessionTest {
     }
 
     /**
-     * Live closes on the clock rather than on "the last bar of the data", so the order is placed
-     * before the closing auction instead of into it.
+     * 실전은 "데이터의 마지막 봉"이 아니라 시계로 장마감 청산을 하므로, 주문이 종가 단일가에
+     * 걸리는 대신 그 전에 나갑니다.
      */
     @Test
     void theDayEndTimeForcesAnExitEvenWithoutAPriceTrigger() {
         runUpToEntry();
 
-        etfPrice = 10_050.0;           // between the stop and the target: no price exit
+        etfPrice = 10_050.0;           // 손절과 목표 사이: 가격 기준 청산은 없음
         broker.fillPrice = 10_050.0;
         tick(14, 0);
         assertEquals(LiveState.HOLDING, session().getState(), "장중에는 계속 보유해야 합니다");
@@ -400,10 +400,10 @@ class LiveSessionTest {
 
     @Test
     void breachingTheDailyLossLimitLiquidatesBeforeTheStopWouldFire() {
-        config.setMaxDailyLoss(50_000);  // tighter than the 1% stop's 100,000
+        config.setMaxDailyLoss(50_000);  // 1% 손절의 100,000보다 빡빡하게
         runUpToEntry();
 
-        etfPrice = 9_940.0;              // -60,000 unrealised, but only -0.6%
+        etfPrice = 9_940.0;              // 평가손 -60,000, 하지만 -0.6%에 불과
         broker.fillPrice = 9_940.0;
         tick(9, 10);
 
@@ -412,7 +412,7 @@ class LiveSessionTest {
                 "손실 한도 초과가 기록으로 남아야 합니다");
     }
 
-    /** The rule that makes "backtest first" more than a convention. */
+    /** "먼저 백테스트"를 관례 이상으로 만드는 규칙. */
     @Test
     void anUnverifiedStrategyNeverStartsASession() {
         when(gate.evaluate(any(), any())).thenReturn(
@@ -440,7 +440,7 @@ class LiveSessionTest {
         assertTrue(savedEvents.isEmpty());
     }
 
-    /** Arriving after the measurement window means we never saw the move; don't guess. */
+    /** 관측 구간이 지난 뒤에 도착했다면 그 움직임을 본 적이 없다는 뜻입니다. 추측하지 않습니다. */
     @Test
     void startingAfterTheWindowHasClosedRefusesToTrade() {
         tick(9, 30);
@@ -467,7 +467,7 @@ class LiveSessionTest {
         assertEquals(1, broker.requests.size(), "거부된 주문을 다시 내면 안 됩니다");
     }
 
-    /** The idempotency key must survive repeated ticks in the same state. */
+    /** 멱등 키는 같은 상태에서 tick이 반복돼도 그대로여야 합니다. */
     @Test
     void repeatedTicksNeverSendASecondEntryOrder() {
         runUpToEntry();

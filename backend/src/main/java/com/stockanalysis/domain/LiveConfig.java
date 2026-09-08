@@ -10,12 +10,12 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 /**
- * The single live-trading setup row (always {@link #ID}), following {@link FeeSetting}'s pattern.
+ * 실투자 설정 단일 행(항상 {@link #ID}). {@link FeeSetting}과 같은 방식입니다.
  *
- * <p>Everything here is <em>execution environment</em> — which strategy, which account, how much,
- * what limits. Trading rules are deliberately absent: they live in {@code strategy.spec_json} so
- * that the backtest and the live run cannot disagree. If you find yourself wanting to add a
- * take-profit field here, add it to {@code ExitSpec} instead.
+ * <p>여기 있는 건 전부 <em>실행 환경</em>입니다 — 어느 전략, 어느 계좌, 얼마, 어떤 한도.
+ * 매매 규칙은 의도적으로 없습니다: 규칙은 {@code strategy.spec_json}에 있어야 백테스트와
+ * 실전이 어긋날 수 없습니다. 여기에 익절 필드를 넣고 싶어진다면, 대신 {@code ExitSpec}에
+ * 넣으세요.
  */
 @Entity
 @Table(name = "live_config")
@@ -32,13 +32,13 @@ public class LiveConfig {
     @Column(name = "etf_group_id")
     private Long etfGroupId;
 
-    /** The backtest that justified trading this logic. Null means "never verified". */
+    /** 이 로직으로 매매해도 된다는 근거가 된 백테스트. null이면 "검증된 적 없음"입니다. */
     @Column(name = "verified_run_id")
     private Long verifiedRunId;
 
     /**
-     * Hash of the spec as it was when {@link #verifiedRunId} scored it. If the saved strategy no
-     * longer hashes to this, the verification is stale and trading is blocked.
+     * {@link #verifiedRunId}가 점수를 매길 당시 스펙의 해시. 저장된 전략이 더는 이 값으로
+     * 해시되지 않으면 검증이 낡은 것이고 매매가 막힙니다.
      */
     @Column(name = "verified_spec_hash", length = 64)
     private String verifiedSpecHash;
@@ -49,13 +49,13 @@ public class LiveConfig {
     @Column(name = "min_verified_days", nullable = false)
     private int minVerifiedDays = 60;
 
-    /** Front-month futures code. Rolls every quarter, so the UI warns as expiry approaches. */
+    /** 최근월물 선물 코드. 분기마다 롤오버되므로 만기가 다가오면 UI가 알려줍니다. */
     @Column(name = "futures_ticker", length = 20)
     private String futuresTicker;
 
     /**
-     * The day the user switched trading on. The scheduler compares this to today, so an armed
-     * switch expires by itself at midnight instead of quietly trading every day thereafter.
+     * 사용자가 매매를 켠 날짜. 스케줄러가 오늘과 비교하므로, 켜둔 스위치는 자정에 스스로
+     * 만료됩니다 — 그 뒤로 매일 조용히 매매하는 대신에.
      */
     @Column(name = "armed_date")
     private LocalDate armedDate;
@@ -69,7 +69,7 @@ public class LiveConfig {
     @Column(name = "poll_interval_sec", nullable = false)
     private int pollIntervalSec = 10;
 
-    /** Wall-clock time to force-close, kept before the closing auction. */
+    /** 강제 청산할 벽시계 시각. 종가 단일가보다 앞에 둡니다. */
     @Column(name = "day_end_exit_time", nullable = false, length = 5)
     private String dayEndExitTime = "15:15";
 
@@ -81,7 +81,7 @@ public class LiveConfig {
         updatedAt = LocalDateTime.now();
     }
 
-    /** True when the user turned trading on for today specifically. */
+    /** 사용자가 다른 날이 아니라 바로 오늘에 대해 매매를 켰는지. */
     public boolean isArmedFor(LocalDate date) {
         return armedDate != null && armedDate.equals(date);
     }

@@ -16,8 +16,8 @@ export type ConditionGroup = {
 };
 
 /**
- * Time-of-day override of take-profit / stop-loss, matched as [startTime, endTime) against the
- * bar being checked. A null percentage falls back to the ExitSpec base value.
+ * 시간대별 익절/손절 덮어쓰기. 지금 확인하는 봉에 대해 [startTime, endTime)으로 맞춥니다.
+ * 퍼센트가 null이면 ExitSpec의 기본값으로 폴백합니다.
  */
 export type TimeBand = {
   startTime: string;
@@ -45,14 +45,14 @@ export type PremarketSpec = {
 
 export type CapitalMode = "FIXED" | "COMPOUND";
 
-/** Default applied to newly uploaded symbols; per-symbol rates live on the dataset. */
+/** 새로 업로드하는 종목에 적용되는 기본값. 종목별 요율은 데이터셋에 있습니다. */
 export type FeeSettingDto = {
   feeRatePct: number;
   updatedAt: string;
 };
 
 export type CapitalSpec = {
-  /** Per-trade budget in FIXED mode, starting balance in COMPOUND mode (KRW). */
+  /** FIXED 모드에서는 거래당 예산, COMPOUND 모드에서는 시작 잔고 (원). */
   amount: number;
   mode: CapitalMode;
 };
@@ -89,17 +89,17 @@ export type Strategy = {
 export type Dataset = {
   id: number;
   symbol: string;
-  /** Exchange code for live orders (e.g. "122630"). Unused by backtests; required to trade. */
+  /** 실주문용 종목코드(예: "122630"). 백테스트는 쓰지 않지만 매매에는 반드시 필요합니다. */
   ticker: string | null;
   market: "FUTURES" | "ETF" | "NORMAL";
   kind: "LEVERAGE" | "INVERSE" | "SINGLE";
   etfGroupId: number | null;
   groupName: string | null;
-  /** One-way commission for this symbol, in percent. */
+  /** 이 종목의 편도 수수료율(%). */
   feeRatePct: number;
   originalFilename: string;
   barCount: number;
-  /** Bar length of this file in minutes (3 for 3-minute data, 1 for 1-minute), inferred at upload. */
+  /** 이 파일의 봉 길이(분). 3분봉이면 3, 1분봉이면 1이며 업로드 시 추론합니다. */
   barIntervalMinutes: number;
   fromTs: string | null;
   toTs: string | null;
@@ -135,7 +135,7 @@ export type Summary = {
 export type MoneySummary = {
   mode: CapitalMode;
   investAmount: number;
-  /** Rates actually applied, keyed by instrument (SINGLE, or LEVERAGE/INVERSE). */
+  /** 실제로 적용된 요율. instrument(SINGLE, 또는 LEVERAGE/INVERSE)별로 담습니다. */
   feeRatesPct: Record<string, number>;
   totalProfitAmount: number;
   totalFeeAmount: number;
@@ -156,13 +156,13 @@ export type Finding = {
   suggestion: string;
 };
 
-/** Rule-based read of what went wrong, worst finding first. */
+/** 무엇이 잘못됐는지에 대한 규칙 기반 해석. 가장 심각한 것부터. */
 export type Diagnosis = {
   headline: string;
   findings: Finding[];
 };
 
-/** What a run was asked for, and what the range resolved to in bars. */
+/** 실행을 무엇으로 요청했고, 그 구간이 봉 기준으로 무엇으로 해석됐는지. */
 export type RunParams = {
   fromDate: string | null;
   toDate: string | null;

@@ -17,9 +17,9 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
 /**
- * The live tick check and the backtest's intrabar check are two views of one rule: the backtest
- * sees a bar's high and low at once, live sees the same prices one at a time. These assert they
- * agree, including the conservative tie-break and the time bands.
+ * 실시간 틱 확인과 백테스트의 장중 확인은 한 규칙의 두 얼굴입니다: 백테스트는 봉의 고가와
+ * 저가를 한 번에 보고, 실전은 같은 가격을 하나씩 봅니다. 여기서는 둘이 일치하는지를 —
+ * 보수적인 타이브레이크와 시간대 밴드까지 포함해 — 확인합니다.
  */
 class ExitEvaluatorLiveTest {
 
@@ -49,7 +49,7 @@ class ExitEvaluatorLiveTest {
         assertEquals(ExitReason.STOP_LOSS, live.reason());
         assertEquals(990.0, live.price(), 1e-9); // 1000 × (1 − 1%)
 
-        // Same entry, a bar whose low reaches the stop: the backtest exits at the same level.
+        // 같은 진입, 저가가 손절선에 닿는 봉: 백테스트도 같은 선에서 청산합니다.
         ExitEvaluator.Decision backtest = ExitEvaluator.decide(
                 bar(LocalTime.of(10, 0), 1000, 1005, 985, 1000), null, false, false, 1,
                 spec, spec.asGroup(), 1000, null, null);
@@ -64,11 +64,11 @@ class ExitEvaluatorLiveTest {
         assertNull(ExitEvaluator.checkLivePrice(spec, 1000, 1005, LocalTime.of(10, 0)));
     }
 
-    /** Stop-loss wins a tie in the backtest; the live check must be just as conservative. */
+    /** 백테스트에서는 동시에 닿으면 손절이 이깁니다. 실시간 확인도 똑같이 보수적이어야 합니다. */
     @Test
     void stopLossWinsWhenBothLevelsAreReachable() {
         ExitSpec spec = exitSpec(1.0, 1.0);
-        // A price that satisfies neither on its own can't test the tie; use the level itself.
+        // 어느 쪽도 단독으로 만족시키지 못하는 가격으로는 타이를 시험할 수 없으니, 그 선 자체를 씁니다.
         ExitEvaluator.Decision live =
                 ExitEvaluator.checkLivePrice(spec, 1000, 990, LocalTime.of(10, 0));
         assertEquals(ExitReason.STOP_LOSS, live.reason());
@@ -79,16 +79,16 @@ class ExitEvaluatorLiveTest {
         assertEquals(ExitReason.STOP_LOSS, backtest.reason());
     }
 
-    /** A band that starts mid-position moves the levels — live resolves it per tick, as the engine does per bar. */
+    /** 보유 도중에 시작되는 밴드는 선을 옮깁니다 — 실전은 틱마다, 엔진은 봉마다 해석합니다. */
     @Test
     void timeBandsMoveTheLiveLevelsAsTheClockPasses() {
         ExitSpec spec = exitSpec(3.0, 3.0);
         spec.setBands(List.of(new TimeBand("10:00", "11:00", 1.0, 1.0)));
 
-        // 09:30 falls outside the band: the base 3% stop is 970, so 985 is still safe.
+        // 09:30은 밴드 밖입니다: 기본 3% 손절이 970이라 985는 아직 안전합니다.
         assertNull(ExitEvaluator.checkLivePrice(spec, 1000, 985, LocalTime.of(9, 30)));
 
-        // The same price at 10:30 is past the band's 1% stop at 990.
+        // 같은 가격이라도 10:30이면 밴드의 1% 손절선 990을 지납니다.
         ExitEvaluator.Decision inBand =
                 ExitEvaluator.checkLivePrice(spec, 1000, 985, LocalTime.of(10, 30));
         assertNotNull(inBand);

@@ -15,11 +15,11 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 /**
- * One trading day of live execution. {@code trade_date} is unique, which is the duplicate-entry
- * guard: a restart mid-session finds the existing row and resumes it instead of buying again.
+ * 실투자 하루치. {@code trade_date}가 UNIQUE이고, 그게 중복 진입 방지 장치입니다: 세션 도중
+ * 재기동하면 기존 행을 찾아 이어받지, 다시 사지 않습니다.
  *
- * <p>The pre-market mode holds at most one position per day, so entry/exit live directly on the
- * session rather than in a separate position table.
+ * <p>장전 모드는 하루에 최대 한 포지션만 들고 있으므로, 진입/청산을 별도 포지션 테이블 없이
+ * 세션에 바로 둡니다.
  */
 @Entity
 @Table(name = "live_session")
@@ -46,18 +46,18 @@ public class LiveSession {
     @Column(name = "etf_group_id", nullable = false)
     private Long etfGroupId;
 
-    /** The backtest run this day's trading was justified by, for after-the-fact review. */
+    /** 이날의 매매를 정당화한 백테스트 실행. 사후 검토용입니다. */
     @Column(name = "verified_run_id")
     private Long verifiedRunId;
 
     @Column(name = "futures_ticker", length = 20)
     private String futuresTicker;
 
-    /** The measured pre-market futures move, kept even when it was too small to trade on. */
+    /** 측정된 장전 선물 움직임. 매매하기엔 너무 작았던 경우에도 남겨둡니다. */
     @Column(name = "trend_pct")
     private Double trendPct;
 
-    /** LEVERAGE or INVERSE — same vocabulary as {@code trade.instrument}. */
+    /** LEVERAGE 또는 INVERSE — {@code trade.instrument}와 같은 어휘입니다. */
     @Column(name = "chosen_instrument", length = 20)
     private String chosenInstrument;
 

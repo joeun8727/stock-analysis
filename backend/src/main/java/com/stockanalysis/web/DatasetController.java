@@ -69,7 +69,7 @@ public class DatasetController {
     public record GroupRequest(Long etfGroupId) {
     }
 
-    /** Moves a dataset to another group, or clears its group when {@code etfGroupId} is null. */
+    /** 데이터셋을 다른 그룹으로 옮깁니다. {@code etfGroupId}가 null이면 그룹을 비웁니다. */
     @PatchMapping("/{id}/group")
     public DatasetDto setGroup(@PathVariable long id, @RequestBody GroupRequest req) {
         return withGroupName(etfGroups.assignDataset(id, req.etfGroupId()));
@@ -78,7 +78,7 @@ public class DatasetController {
     public record TickerRequest(String ticker) {
     }
 
-    /** Exchange code for live orders (e.g. 122630). Send null or "" to clear it. */
+    /** 실주문용 종목코드(예: 122630). null이나 ""를 보내면 비웁니다. */
     @PatchMapping("/{id}/ticker")
     public DatasetDto setTicker(@PathVariable long id, @RequestBody TickerRequest req) {
         return withGroupName(service.setTicker(id, req.ticker()));
@@ -87,7 +87,7 @@ public class DatasetController {
     public record FeeRequest(double feeRatePct) {
     }
 
-    /** Per-symbol commission, in percent per side. */
+    /** 종목별 편도 수수료율(%). */
     @PatchMapping("/{id}/fee")
     public DatasetDto setFee(@PathVariable long id, @RequestBody FeeRequest req) {
         return withGroupName(service.setFeeRate(id, req.feeRatePct()));

@@ -4,7 +4,7 @@ import com.stockanalysis.domain.Dataset;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
-/** Computes a compact statistical summary of a dataset's bars to feed the LLM prompt. */
+/** LLM 프롬프트에 넣을, 데이터셋 봉의 간결한 통계 요약을 계산합니다. */
 @Component
 public class DatasetStats {
 

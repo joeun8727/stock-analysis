@@ -58,11 +58,11 @@ public class BacktestService {
     public BacktestResponse run(long strategyId, Long datasetId, Long groupId, LocalDate from, LocalDate to) {
         Strategy strategy = strategyRepo.findById(strategyId)
                 .orElseThrow(() -> new IllegalArgumentException("전략을 찾을 수 없습니다: " + strategyId));
-        // Running a backtest must never rewrite the strategy. This method writes (the run + trades),
-        // so the loaded Strategy stays managed and Hibernate dirty-checks spec_json by comparing the
-        // re-serialized spec against the stored text. Any spec field with a default (capital,
-        // premarket, …) is absent from older rows, so the round-trip differs and Hibernate would
-        // flush a silent UPDATE — rewriting the user's spec and bumping updated_at on every run.
+        // 백테스트를 돌리는 것이 전략을 다시 쓰는 일이 되어서는 절대 안 됩니다. 이 메서드는
+        // 쓰기(실행 + 거래)를 하므로 불러온 Strategy가 관리 상태로 남고, Hibernate는 스펙을 다시
+        // 직렬화한 결과를 저장된 텍스트와 비교해 spec_json을 더티 체킹합니다. 기본값이 있는 스펙
+        // 필드(capital, premarket, …)는 예전 행에 아예 없어서 왕복 결과가 달라지고, Hibernate가
+        // 조용한 UPDATE를 흘려보냅니다 — 사용자의 스펙을 덮어쓰고 실행할 때마다 updated_at을 올리면서.
         entityManager.detach(strategy);
         if (from != null && to != null && from.isAfter(to)) {
             throw new IllegalArgumentException("시작일이 종료일보다 늦습니다: " + from + " ~ " + to);
@@ -85,7 +85,7 @@ public class BacktestService {
                 throw new IllegalArgumentException(emptyMessage(from, to,
                         "그룹의 레버리지/인버스/선물 데이터가 비어 있습니다."));
             }
-            // Each side carries its own commission, so the schedule is built per symbol.
+            // 양쪽이 각자의 수수료를 지므로 수수료표는 종목별로 만듭니다.
             FeeSchedule fees = FeeSchedule.ofEtf(
                     g.leverage().getFeeRatePct(), g.inverse().getFeeRatePct());
             result = engine.runEtfPremarket(strategy.getSpec(), lev, inv, fut, fees);
@@ -166,7 +166,7 @@ public class BacktestService {
                 trades);
     }
 
-    /** Records the requested range alongside what it actually resolved to in bars. */
+    /** 요청한 구간과, 그것이 봉 기준으로 실제 해석된 값을 함께 기록합니다. */
     private static RunParams paramsOf(LocalDate from, LocalDate to, BarSeries series) {
         return new RunParams(
                 from == null ? null : from.toString(),

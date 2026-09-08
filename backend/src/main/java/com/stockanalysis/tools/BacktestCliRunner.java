@@ -9,8 +9,8 @@ import com.stockanalysis.data.ExcelParser;
 import java.nio.file.Path;
 
 /**
- * Standalone runner (no Spring/DB): parses an excel file and prints backtest metrics for the
- * golden-cross sample strategy. Usage: {@code BacktestCliRunner <path-to-xlsx>}.
+ * 독립 실행 러너(Spring도 DB도 없음): 엑셀 파일을 파싱해 골든크로스 샘플 전략의 백테스트
+ * 지표를 출력합니다. 사용법: {@code BacktestCliRunner <xlsx 경로>}.
  */
 public final class BacktestCliRunner {
 

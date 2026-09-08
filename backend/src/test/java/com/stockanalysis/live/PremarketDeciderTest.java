@@ -23,10 +23,10 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * The pre-market direction call is the one decision that starts a real trade, and the backtest and
- * the live session must reach it the same way. They share {@link PremarketDecider}; these tests pin
- * the rule itself and then check that the engine's answer matches the decider's on the same data —
- * the equivalence that makes a backtest worth anything.
+ * 장전 방향 판단은 실제 거래를 시작시키는 유일한 결정이고, 백테스트와 실투자 세션은 반드시
+ * 같은 방식으로 거기에 도달해야 합니다. 둘은 {@link PremarketDecider}를 공유합니다. 이 테스트는
+ * 규칙 자체를 못 박은 다음, 같은 데이터에서 엔진의 답과 decider의 답이 일치하는지 확인합니다 —
+ * 백테스트를 가치 있게 만드는 바로 그 동등성입니다.
  */
 class PremarketDeciderTest {
 
@@ -69,11 +69,11 @@ class PremarketDeciderTest {
                 List.of(at(8, 45, 100), at(8, 57, 100.02)), spec(0.1));
 
         assertEquals(Side.SKIP, d.side());
-        assertEquals(0.02, d.trendPct(), 1e-9); // the number is kept so the screen can explain the skip
+        assertEquals(0.02, d.trendPct(), 1e-9); // 화면이 건너뛴 이유를 설명할 수 있도록 수치를 남깁니다
         assertNull(d.instrument());
     }
 
-    /** Only samples inside [startTime, endTime) count — a 09:05 quote must not move the decision. */
+    /** [startTime, endTime) 안의 표본만 셉니다 — 09:05 시세가 판단을 움직여서는 안 됩니다. */
     @Test
     void samplesOutsideTheWindowAreIgnored() {
         PremarketDecider.Decision d = PremarketDecider.decide(
@@ -95,8 +95,8 @@ class PremarketDeciderTest {
     }
 
     /**
-     * Equivalence: feed the backtest engine a day of futures bars and feed the decider the same
-     * closes as if they had been polled live. Both must pick the same side.
+     * 동등성 확인: 백테스트 엔진에는 하루치 선물 봉을, decider에는 그 종가들을 실시간으로
+     * 폴링한 것처럼 넣습니다. 둘이 같은 방향을 골라야 합니다.
      */
     @Test
     void theEngineAndTheLiveDeciderAgreeOnTheSameData() {
@@ -120,11 +120,11 @@ class PremarketDeciderTest {
                 new BarSeries(List.of(bar(down, LocalTime.of(9, 0), 50), bar(down, LocalTime.of(9, 3), 49))),
                 new BarSeries(futuresBars));
 
-        // What the engine did, day by day.
+        // 엔진이 날짜별로 무엇을 했는지.
         assertEquals("LEVERAGE", result.trades().get(0).instrument());
         assertEquals("INVERSE", result.trades().get(1).instrument());
 
-        // What a live session would do from the same prices, arriving as polled quotes.
+        // 같은 가격이 폴링된 시세로 도착했을 때 실투자 세션이 무엇을 할지.
         List<PricePoint> upSamples = List.of(
                 new PricePoint(LocalDateTime.of(up, LocalTime.of(8, 45)), 100),
                 new PricePoint(LocalDateTime.of(up, LocalTime.of(8, 57)), 101));

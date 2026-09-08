@@ -12,7 +12,7 @@ import jakarta.persistence.Table;
 
 import java.time.LocalDateTime;
 
-/** Metadata for one uploaded symbol series. Bar data itself lives in {@code price_bar}. */
+/** 업로드한 종목 계열 하나의 메타데이터. 봉 데이터 자체는 {@code price_bar}에 있습니다. */
 @Entity
 @Table(name = "dataset")
 public class Dataset {
@@ -25,9 +25,8 @@ public class Dataset {
     private String symbol;
 
     /**
-     * Exchange code used to place real orders (e.g. "122630"). {@code symbol} is a display name and
-     * cannot be ordered against, so live trading refuses a dataset whose ticker is unset. Backtests
-     * never read this.
+     * 실주문에 쓰는 종목코드(예: "122630"). {@code symbol}은 표시명이라 그걸로는 주문할 수
+     * 없어서, 실투자는 ticker가 비어 있는 데이터셋을 거부합니다. 백테스트는 이 값을 읽지 않습니다.
      */
     @Column(name = "ticker", length = 20)
     private String ticker;
@@ -43,7 +42,7 @@ public class Dataset {
     @Column(name = "etf_group_id")
     private Long etfGroupId;
 
-    /** One-way commission for this symbol, in percent; applied to both legs of every trade. */
+    /** 이 종목의 편도 수수료율(%). 모든 거래의 매수·매도 양쪽에 적용됩니다. */
     @Column(name = "fee_rate_pct", nullable = false)
     private double feeRatePct = 0.015;
 
@@ -54,9 +53,9 @@ public class Dataset {
     private int barCount;
 
     /**
-     * Bar length of this file in minutes, inferred from the parsed timestamps at upload. The engine
-     * ignores it (it counts bars), but "10봉 보유" means 30 minutes at 3 and 10 at 1, so the UI and
-     * the LLM prompt need it to describe the same spec correctly for either dataset.
+     * 이 파일의 봉 길이(분). 업로드 시 파싱한 타임스탬프에서 추론합니다. 엔진은 이 값을 보지
+     * 않지만(봉을 셀 뿐), "10봉 보유"가 3분봉에서는 30분이고 1분봉에서는 10분이라 UI와 LLM
+     * 프롬프트는 같은 스펙을 데이터셋에 맞게 설명하려면 이 값이 필요합니다.
      */
     @Column(name = "bar_interval_minutes", nullable = false)
     private int barIntervalMinutes = 3;

@@ -10,9 +10,8 @@ import jakarta.persistence.Table;
 import java.time.LocalDateTime;
 
 /**
- * One futures quote seen during the pre-market window. Stored so the 09:00 direction call can be
- * re-derived afterwards from exactly the numbers it was made on — with real money involved,
- * "why did it buy the inverse?" has to be answerable.
+ * 장전 구간에 본 선물 시세 하나. 09:00의 방향 판단을 그때 쓴 숫자 그대로 사후에 재현할 수
+ * 있도록 저장합니다 — 진짜 돈이 걸린 이상 "왜 인버스를 샀나?"에 답할 수 있어야 합니다.
  */
 @Entity
 @Table(name = "live_premarket_tick")

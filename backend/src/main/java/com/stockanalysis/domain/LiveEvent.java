@@ -11,11 +11,11 @@ import jakarta.persistence.Table;
 import java.time.LocalDateTime;
 
 /**
- * Audit trail entry: a state change, an order request or response, a refusal, an error.
+ * 감사 기록 한 줄: 상태 변화, 주문 요청이나 응답, 거절, 오류.
  *
- * <p>{@code sessionId} is nullable so things that happen before a session exists — a connection
- * check, a refusal to arm — are still recorded. When something goes wrong in a live run this table
- * is the only account of what the system saw and decided.
+ * <p>{@code sessionId}가 nullable인 이유는 세션이 생기기 전의 일 — 연결 점검, 활성화 거절 —
+ * 도 기록되게 하려고입니다. 실투자에서 뭔가 잘못됐을 때, 시스템이 무엇을 보고 무엇을 결정했는지
+ * 말해주는 건 이 테이블뿐입니다.
  */
 @Entity
 @Table(name = "live_event")
@@ -37,7 +37,7 @@ public class LiveEvent {
     @Column(name = "message", length = 1000)
     private String message;
 
-    /** Free-form JSON text (broker payloads, decision inputs). Text, not a JSON column. */
+    /** 자유 형식 JSON 텍스트(브로커 페이로드, 판단 입력값). JSON 컬럼이 아니라 텍스트입니다. */
     @Column(name = "detail", columnDefinition = "text")
     private String detail;
 

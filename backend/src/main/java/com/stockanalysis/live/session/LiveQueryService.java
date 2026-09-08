@@ -26,9 +26,9 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Read-side of live trading: what the screen needs to show, assembled from the session tables plus
- * a current quote. Kept apart from {@link LiveTradingService} so that looking at the page can never
- * advance the state machine.
+ * 실투자의 읽기 쪽: 세션 테이블과 현재 시세를 모아 화면에 보여줄 것을 만듭니다.
+ * {@link LiveTradingService}와 떼어놓은 이유는, 화면을 보는 것만으로 상태 기계가 진행되는 일이
+ * 절대 없게 하기 위해서입니다.
  */
 @Service
 public class LiveQueryService {
@@ -74,7 +74,7 @@ public class LiveQueryService {
     public record EventView(String ts, String type, String message) {
     }
 
-    /** Everything the "today" panel shows. Nulls mean "not applicable yet", not "unknown". */
+    /** "오늘" 패널이 보여주는 것 전부. null은 "모름"이 아니라 "아직 해당 없음"입니다. */
     public record TodayView(
             String mode,
             boolean armed,
@@ -136,11 +136,11 @@ public class LiveQueryService {
                     unrealised = (currentPrice - s.getEntryPrice()) * s.getQuantity();
                 }
             } catch (RuntimeException e) {
-                currentPrice = null; // showing nothing beats showing a stale number on a live position
+                currentPrice = null; // 보유 중인데 낡은 숫자를 보여주느니 아무것도 안 보여주는 편이 낫습니다
             }
             if (spec != null && s.getEntryPrice() != null) {
-                // Resolved at the current time, so the displayed levels follow the time bands the
-                // same way the engine does while holding.
+                // 현재 시각으로 해석하므로, 표시되는 선이 보유 중 엔진이 하는 것과 같은 방식으로
+                // 시간대 밴드를 따라갑니다.
                 LocalTime now = LocalTime.now();
                 stop = nanToNull(ExitEvaluator.stopPriceOf(spec.getExit(), s.getEntryPrice(), now));
                 take = nanToNull(ExitEvaluator.tpPriceOf(spec.getExit(), s.getEntryPrice(), now));
@@ -209,7 +209,7 @@ public class LiveQueryService {
                 List.of(), List.of(), verification);
     }
 
-    /** History rows, newest day first. */
+    /** 이력 행. 최근 날짜부터. */
     @Transactional(readOnly = true)
     public List<SessionListItem> history() {
         return sessions.findAllByOrderByTradeDateDesc().stream()
@@ -230,7 +230,7 @@ public class LiveQueryService {
                                   String haltedReason) {
     }
 
-    /** Connection check: proves credentials, account access and ticker setup without ordering. */
+    /** 연결 점검: 주문 없이 자격증명·계좌 접근·종목코드 설정이 맞는지 확인합니다. */
     public record CheckResult(String mode, String account, boolean tokenOk, boolean balanceOk,
                               Double cashAvailable, String futuresTicker, Double futuresPrice,
                               boolean futuresEstimated, List<String> problems) {
@@ -304,7 +304,7 @@ public class LiveQueryService {
                 config.getFuturesTicker(), futuresPrice, estimated, problems);
     }
 
-    // ------------------------------------------------------------------ helpers
+    // ------------------------------------------------------------------ 보조
 
     private StrategySpec specOf(Long strategyId) {
         if (strategyId == null) {

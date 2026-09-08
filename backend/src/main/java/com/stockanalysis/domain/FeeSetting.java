@@ -8,8 +8,8 @@ import jakarta.persistence.Table;
 import java.time.LocalDateTime;
 
 /**
- * The single global commission rate, in percent per side. Always row {@link #ID} — commission is an
- * account-level fact, so every backtest reads this one value instead of carrying its own.
+ * 전역 수수료율 하나(편도 %). 항상 {@link #ID} 행입니다 — 수수료는 계좌 차원의 사실이라,
+ * 모든 백테스트가 자기 것을 들고 다니는 대신 이 값 하나를 읽습니다.
  */
 @Entity
 @Table(name = "fee_setting")

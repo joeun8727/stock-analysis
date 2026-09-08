@@ -11,8 +11,8 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * End-to-end over the real KODEX 레버리지 workbook: parse -> engine -> assert sane metrics.
- * No database involved (parser + engine only), so this runs hermetically in {@code ./gradlew test}.
+ * 실제 KODEX 레버리지 워크북으로 하는 종단 확인: 파싱 -> 엔진 -> 말이 되는 지표인지 검증.
+ * DB가 필요 없어서(파서 + 엔진만) {@code ./gradlew test}에서 독립적으로 돕니다.
  */
 class BacktestIntegrationTest {
 
@@ -27,7 +27,7 @@ class BacktestIntegrationTest {
         List<Bar> bars = new ExcelParser().parse(DATA_FILE);
         assertTrue(bars.size() > 10_000, "expected many bars, got " + bars.size());
 
-        // Bars must be chronologically consistent once wrapped in a series.
+        // 시리즈로 감싸고 나면 봉이 시간순으로 일관돼야 합니다.
         BarSeries series = new BarSeries(bars);
         for (int i = 1; i < series.size(); i++) {
             assertTrue(!series.bars().get(i).ts().isBefore(series.bars().get(i - 1).ts()),

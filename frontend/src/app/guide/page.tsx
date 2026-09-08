@@ -1,8 +1,9 @@
 import Link from "next/link";
 
 /**
- * Static help page for the exit ("매도") rules — the part of the rule builder that trips people up.
- * Everything here mirrors BacktestEngine.decideExit / ExitSpec; keep it in sync when the engine changes.
+ * 매도 규칙 전용 정적 도움말 페이지 — 규칙 빌더에서 사람들이 가장 많이 걸려 넘어지는 부분입니다.
+ * 여기 있는 내용은 전부 BacktestEngine.decideExit / ExitSpec을 그대로 옮긴 것입니다.
+ * 엔진을 바꾸면 이 페이지도 함께 고치세요.
  */
 
 const INDICATORS: { key: string; name: string; note: string }[] = [

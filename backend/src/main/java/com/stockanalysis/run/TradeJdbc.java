@@ -11,7 +11,7 @@ import java.sql.SQLException;
 import java.time.LocalDateTime;
 import java.util.List;
 
-/** Batch-writes and reads {@code trade} rows (JdbcTemplate, since IDENTITY ids block JPA batching). */
+/** {@code trade} 행을 배치로 쓰고 읽습니다(IDENTITY id가 JPA 배치를 막아서 JdbcTemplate을 씁니다). */
 @Component
 public class TradeJdbc {
 
