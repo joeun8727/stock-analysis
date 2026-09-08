@@ -20,6 +20,10 @@ out/
 .env
 .env.local
 
+# KIS 접근토큰 캐시 — 하루짜리 베어러 자격증명입니다. data/ 는 .gitkeep 때문에
+# 추적되는 폴더라, 이름을 명시하지 않으면 `git add data/` 한 번에 토큰이 올라갑니다.
+.kis-token.json
+
 # Original uploaded excel data is large (~14 MB each); keep the folder structure but not the files.
 # price_bar is the source of truth anyway — re-upload the xlsx through the 데이터 업로드 screen.
 data/**/*.xlsx
